@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-plex
 category: media
 name: Plex (Vortexo)
-version: "1.43.3.10828.17"
+version: "1.43.3.10828.18"
 tagline: Plex Discover with private TorBox streaming
 icon: https://avatars.githubusercontent.com/u/11744877?v=4
 description: >-
@@ -45,16 +45,17 @@ torOnly: false
 permissions:
   - GPU
 releaseNotes: >-
-  Fixes SkyNet returning to an outdated or disconnected state after Watchlist
-  automation runs.
+  Prevents a mislabeled TorBox result from being linked under the wrong Plex
+  title.
 
 
-  All Plex owner-token requests now carry authentication only. Vortexo no
-  longer sends its companion product, version, platform, or client identity to
-  Plex.tv, Plex Discover, or the local Plex server.
+  Before creating any library link, Vortexo now verifies the requested movie
+  or show title against the actual TorBox torrent and selected video filename.
+  Conflicting release years are also rejected.
 
 
-  TorBox Watchlist automation, Add to Plex, the owned WebDAV mount, existing
-  library links, and stock Plex access on port 32400 are preserved.
+  A mismatch fails safely before mount lookup, symlink creation, or Plex
+  scanning. The job keeps a clear failure reason and Watchlist automation can
+  retry later when a genuine cached release becomes available.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store/pull/2
