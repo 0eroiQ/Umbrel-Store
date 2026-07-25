@@ -4,7 +4,7 @@ name: Riven
 tagline: Debrid-powered media manager for Plex and Jellyfin
 icon: https://avatars.githubusercontent.com/u/172203452?v=4
 category: media
-version: "v0.23.6-27"
+version: "v0.23.6-28"
 port: 8080
 description: >-
   Riven builds a virtual media library from your configured Debrid and media manager services, then exposes it as a browsable filesystem for apps like Plex.
@@ -33,7 +33,9 @@ repo: https://github.com/rivenmedia/riven
 support: https://github.com/rivenmedia/riven/issues
 gallery: []
 releaseNotes: >-
-  Fixes login and registration failing when the web UI is opened at any hostname other than the Umbrel's LAN IP (for example `umbrel.local` or a Tailscale address). The frontend no longer pins a hardcoded `ORIGIN`, so the request origin is derived per-request instead.
+  Adds TorBox as a debrid downloader. A new TorBox section now appears under Settings → Downloaders alongside Real-Debrid, AllDebrid, and Debrid-Link: enable it and paste your TorBox API key to use TorBox as a download source.
+
+  The backend image is now built from the ZeroQ-bit/riven fork so TorBox support is included.
 dependencies: []
 path: ""
 defaultUsername: "riven"
