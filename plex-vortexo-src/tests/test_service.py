@@ -91,6 +91,49 @@ class ServiceTests(unittest.TestCase):
         self.assertNotEqual(first, second)
         self.assertTrue(os.path.lexists(first))
 
+    def test_library_job_fails_before_mount_or_link_when_release_title_is_wrong(self):
+        media = {
+            "discover_id": "spider-man",
+            "type": "movie",
+            "title": "Spider-Man Brand New Day",
+            "year": 2026,
+        }
+        stream = {
+            "info_hash": "wrong-release",
+            "file_name": "Spider-Man.Brand.New.Day.2026.mkv",
+        }
+        job, _ = self.service.store.create_or_get_job(
+            "spider-man|wrong-release",
+            media["discover_id"],
+            "wrong-stream",
+            {"media": media, "stream": stream},
+        )
+        torrent = {
+            "id": 42,
+            "name": "Marvel Studios Iron Man 2008 1080p WEB-DL",
+            "files": [
+                {
+                    "id": 0,
+                    "name": "Marvel Studios Iron Man 2008 1080p WEB-DL.mkv",
+                    "size": 1000,
+                }
+            ],
+        }
+        with mock.patch("vortexo.service.TorBoxClient") as client_type:
+            client_type.return_value.find_torrent.return_value = torrent
+            with mock.patch.object(
+                self.service, "_wait_for_torrent", return_value=torrent
+            ):
+                with mock.patch.object(self.service, "_wait_for_mount_file") as mount:
+                    with mock.patch.object(self.service, "_link_media") as link:
+                        self.service._run_library_job(job["id"])
+
+        failed = self.service.store.job(job["id"])
+        self.assertEqual(failed["status"], "failed")
+        self.assertIn("does not match", failed["detail"])
+        mount.assert_not_called()
+        link.assert_not_called()
+
     def test_episode_link_uses_exact_season_episode(self):
         source = self._source_file("Show.S02E04.mkv")
         linked, _ = self.service._link_media(
