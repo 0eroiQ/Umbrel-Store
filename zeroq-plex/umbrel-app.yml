@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-plex
 category: media
 name: Plex (Vortexo)
-version: "1.43.3.10828.15"
+version: "1.43.3.10828.16"
 tagline: Plex Discover with private TorBox streaming
 icon: https://avatars.githubusercontent.com/u/11744877?v=4
 description: >-
@@ -45,17 +45,16 @@ torOnly: false
 permissions:
   - GPU
 releaseNotes: >-
-  Enables Add to Plex for cached Torrentio TorBox results by securely deriving
-  their torrent identity server-side. TorBox credentials and stream URLs remain
-  private.
+  Fixes SkyNet being shown as outdated or disconnected in Plex clients even
+  while the real Plex Media Server is online.
 
 
-  Improves mount recovery after an app restart. Plex (Vortexo) now cleans up
-  only a disconnected mount that it can prove it owns, while continuing to
-  refuse unknown mounts.
+  Vortexo now keeps its client identity on Plex cloud and Discover requests,
+  while local library scans, media lookups, progress updates, and health checks
+  authenticate without overriding the Plex server version or platform.
 
 
-  Watchlist automation, existing Plex files, and stock Plex access on port
-  32400 are preserved.
+  TorBox Watchlist automation, Add to Plex, the owned WebDAV mount, existing
+  library links, and stock Plex access on port 32400 are preserved.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store/pull/2
