@@ -4,7 +4,7 @@ name: Riven
 tagline: Debrid-powered media manager for Plex and Jellyfin
 icon: https://avatars.githubusercontent.com/u/172203452?v=4
 category: media
-version: "v0.23.6-26"
+version: "v0.23.6-27"
 port: 8080
 description: >-
   Riven builds a virtual media library from your configured Debrid and media manager services, then exposes it as a browsable filesystem for apps like Plex.
@@ -33,7 +33,7 @@ repo: https://github.com/rivenmedia/riven
 support: https://github.com/rivenmedia/riven/issues
 gallery: []
 releaseNotes: >-
-  Adds a read-only FTP share for Chillio at port 2121 with username `riven` and password `riven`, while keeping the WebDAV share on port 8081.
+  Fixes login and registration failing when the web UI is opened at any hostname other than the Umbrel's LAN IP (for example `umbrel.local` or a Tailscale address). The frontend no longer pins a hardcoded `ORIGIN`, so the request origin is derived per-request instead.
 dependencies: []
 path: ""
 defaultUsername: "riven"
