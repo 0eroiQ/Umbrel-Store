@@ -112,9 +112,11 @@ services:
       AUTH_SECRET: "${APP_SEED}"
       DISABLE_EMAIL_PASSWORD: "false"
       ENABLE_EMAIL_PASSWORD_SIGNUP: "true"
+      # Do NOT set ORIGIN: SvelteKit ignores HOST_HEADER/PROTOCOL_HEADER when it is set,
+      # and better-auth uses ORIGIN as its only trusted origin. A hardcoded LAN-IP ORIGIN
+      # breaks login/register from umbrel.local, Tailscale, or any other hostname.
       HOST_HEADER: "host"
       PROTOCOL_HEADER: "x-forwarded-proto"
-      ORIGIN: "${APP_ZEROQ_RIVEN_LOCAL_URL}"
     volumes:
       - ${APP_DATA_DIR}/data/frontend:/riven/data
     depends_on:
