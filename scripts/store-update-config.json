@@ -26,7 +26,7 @@
     {
       "id": "zeroq-plex",
       "manifest_path": "zeroq-plex/umbrel-app.yml",
-      "manifest_version_format": "{version_core}.16",
+      "manifest_version_format": "{version_core}.17",
       "manifest_version_source": {
         "type": "dockerhub_latest_tag",
         "repository": "linuxserver/plex",

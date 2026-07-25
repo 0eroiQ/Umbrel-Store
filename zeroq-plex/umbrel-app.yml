@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-plex
 category: media
 name: Plex (Vortexo)
-version: "1.43.3.10828.16"
+version: "1.43.3.10828.17"
 tagline: Plex Discover with private TorBox streaming
 icon: https://avatars.githubusercontent.com/u/11744877?v=4
 description: >-
@@ -45,13 +45,13 @@ torOnly: false
 permissions:
   - GPU
 releaseNotes: >-
-  Fixes SkyNet being shown as outdated or disconnected in Plex clients even
-  while the real Plex Media Server is online.
+  Fixes SkyNet returning to an outdated or disconnected state after Watchlist
+  automation runs.
 
 
-  Vortexo now keeps its client identity on Plex cloud and Discover requests,
-  while local library scans, media lookups, progress updates, and health checks
-  authenticate without overriding the Plex server version or platform.
+  All Plex owner-token requests now carry authentication only. Vortexo no
+  longer sends its companion product, version, platform, or client identity to
+  Plex.tv, Plex Discover, or the local Plex server.
 
 
   TorBox Watchlist automation, Add to Plex, the owned WebDAV mount, existing
