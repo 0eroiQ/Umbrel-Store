@@ -360,6 +360,55 @@ class ServiceTests(unittest.TestCase):
             "already_in_plex",
         )
 
+    def test_watchlist_auto_upgrade_adds_only_a_safer_higher_quality_version(self):
+        self.service.store.update_settings(
+            {
+                "torbox_api_key": "private-key",
+                "stream_manifest_urls": ["https://sources.example/manifest.json"],
+                "plex_watchlist_enabled": True,
+                "plex_watchlist_profile": "best",
+                "plex_watchlist_cached_only": True,
+                "plex_watchlist_auto_upgrade": True,
+            }
+        )
+        media = {
+            "discover_id": "movie-discover",
+            "type": "movie",
+            "title": "Memento",
+            "year": 2000,
+            "tmdb_id": 77,
+            "imdb_id": "tt0209144",
+        }
+        source = self._source_file()
+        self.service._link_media(
+            media,
+            {"quality": "1080p", "info_hash": "existing-1080p"},
+            source,
+        )
+        upgrade = {
+            "info_hash": "safe-4k",
+            "magnet": "magnet:?xt=urn:btih:safe-4k",
+            "quality": "4K",
+            "size_gb": 20,
+            "cached": True,
+            "can_add": True,
+            "file_name": "Memento.2000.2160p.WEB-DL.mkv",
+        }
+        with mock.patch(
+            "vortexo.service.fetch_plex_watchlist", return_value=[media]
+        ):
+            with mock.patch.object(self.service, "_plex_has_media", return_value=True):
+                with mock.patch.object(
+                    self.service, "_lookup_streams", return_value=([upgrade], [])
+                ):
+                    with mock.patch.object(self.service, "_start_library_job"):
+                        result = self.service.sync_watchlist()
+        self.assertEqual(result["queued"], 1)
+        item = self.service.store.watchlist_item("movie:77")
+        payload = self.service.store.job_payload(item["job_id"])
+        self.assertEqual(payload["source"], "plex_watchlist_upgrade")
+        self.assertEqual(payload["stream"]["quality"], "4K")
+
     def test_watchlist_show_safely_targets_first_regular_episode(self):
         show = {
             "discover_id": "show-discover",

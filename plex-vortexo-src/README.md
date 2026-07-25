@@ -42,7 +42,11 @@ The optional Plex Watchlist coordinator runs entirely on the server. It reads
 the owner's universal Watchlist at a configurable interval (one minute by
 default), skips titles already present in a local Plex library or an active
 Vortexo job, and selects a cached addable release using the saved Best, 4K, or
-1080p profile and maximum-size limit. Movies are acquired directly. A newly
+1080p profile and maximum-size limit. Automatic imports reject mismatched
+titles and years, trailers, samples, obvious pre-release captures, and
+undersized quality claims. When enabled, automatic upgrades add a safer
+higher-quality media version without deleting the current version. Movies are
+acquired directly. A newly
 requested TV show safely starts with its first regular episode rather than
 silently acquiring an entire series.
 
@@ -50,6 +54,19 @@ Every selected release uses the same persistent library-job state machine as
 the manual Add to Plex action. Completed media is ordinary Plex library media,
 so it appears in native Plex clients without modifying those clients. Removing
 a title from the Plex Watchlist never deletes an existing file or Plex item.
+
+The recoverable library audit reports every managed symlink and moves only
+high-confidence bad links into a timestamped `.quarantine` directory with a
+JSONL restoration manifest:
+
+```sh
+python3 -m vortexo.audit \
+  --source-root /downloads/.vortexo-source \
+  --movies-root /downloads/vortexo/Movies \
+  --tv-root /downloads/vortexo/TV \
+  --library-root /downloads/vortexo \
+  --quarantine
+```
 
 ## Verification
 

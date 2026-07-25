@@ -19,12 +19,14 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .integrations import (
+    automatic_release_is_suitable,
     IntegrationError,
     TorBoxClient,
     choose_video_file,
     deduplicate_streams,
     discover_children,
     discover_metadata,
+    extract_quality,
     fetch_plex_watchlist,
     fetch_streams,
     json_request,
@@ -33,6 +35,7 @@ from .integrations import (
     plex_cloud_headers,
     plex_owner_token,
     plex_server_headers,
+    quality_rank,
     release_matches_media,
     select_automatic_stream,
     torrent_completed,
@@ -234,6 +237,9 @@ class VortexoService:
             "plex_watchlist_cached_only": bool(
                 settings.get("plex_watchlist_cached_only", True)
             ),
+            "plex_watchlist_auto_upgrade": bool(
+                settings.get("plex_watchlist_auto_upgrade", True)
+            ),
             "plex_watchlist_max_size_gb": float(
                 settings.get("plex_watchlist_max_size_gb", 80)
             ),
@@ -292,6 +298,10 @@ class VortexoService:
             values["plex_watchlist_cached_only"] = bool(
                 body.get("plex_watchlist_cached_only")
             )
+        if "plex_watchlist_auto_upgrade" in body:
+            values["plex_watchlist_auto_upgrade"] = bool(
+                body.get("plex_watchlist_auto_upgrade")
+            )
         if "plex_watchlist_max_size_gb" in body:
             max_size_gb = float(body.get("plex_watchlist_max_size_gb") or 0)
             if max_size_gb < 0 or max_size_gb > 1000:
@@ -345,6 +355,7 @@ class VortexoService:
             "poll_minutes": int(settings.get("plex_watchlist_poll_minutes", 1)),
             "profile": settings.get("plex_watchlist_profile", "best"),
             "cached_only": bool(settings.get("plex_watchlist_cached_only", True)),
+            "auto_upgrade": bool(settings.get("plex_watchlist_auto_upgrade", True)),
             "show_mode": settings.get("plex_watchlist_show_mode", "first_episode"),
             "sync": self.store.watchlist_status(),
         }
@@ -383,6 +394,54 @@ class VortexoService:
             if self._matches_plex_identity(item, title, imdb_id, tmdb_id):
                 return True
         return False
+
+    @staticmethod
+    def _watchlist_target_quality_rank(profile: str) -> int:
+        return 3 if str(profile).lower() == "1080p" else 5
+
+    def _managed_media_quality_rank(self, media: dict) -> int:
+        title = str(media.get("parent_title") or media.get("title") or "")
+        if not title:
+            return 0
+        wanted = normalise_title(title)
+        season = int(media.get("season") or 0)
+        episode = int(media.get("episode") or 0)
+        roots = []
+        library_root = (
+            self.tv_root
+            if media.get("type") in {"show", "episode"} or season
+            else self.movies_root
+        )
+        try:
+            folders = os.listdir(library_root)
+        except OSError:
+            return 0
+        for folder in folders:
+            if normalise_title(folder) == wanted:
+                roots.append(os.path.join(library_root, folder))
+        best = 0
+        episode_marker = (
+            re.compile(rf"\bS0*{season}E0*{episode}\b", re.I)
+            if season and episode
+            else None
+        )
+        for root in roots:
+            for current, directories, files in os.walk(root):
+                directories.sort()
+                for filename in sorted(files):
+                    if episode_marker and not episode_marker.search(filename):
+                        continue
+                    path = os.path.join(current, filename)
+                    if not os.path.islink(path):
+                        continue
+                    try:
+                        target = os.path.realpath(path)
+                    except OSError:
+                        continue
+                    if not _inside(target, self.source_root):
+                        continue
+                    best = max(best, quality_rank(extract_quality(filename)))
+        return best
 
     def _watchlist_target(self, media: dict) -> tuple[dict, dict, int, int]:
         if media.get("type") != "show":
@@ -432,28 +491,39 @@ class VortexoService:
                 if job and job.get("status") not in TERMINAL_JOB_STATES:
                     counts["skipped_active"] += 1
                     continue
-                if job and job.get("status") in {"plex_confirmed", "already_in_plex"}:
-                    self.store.update_watchlist_item(
-                        identity, job["status"], job["detail"], job_id=job["id"]
-                    )
-                    counts["skipped_existing"] += 1
-                    continue
                 if (
                     int(record.get("next_retry_at") or 0) > now
-                    and record.get("status") in {"failed", "no_cached_release"}
+                    and record.get("status")
+                    in {"failed", "no_cached_release", "upgrade_waiting"}
                 ):
                     counts["skipped_active"] += 1
                     continue
                 try:
-                    if self._plex_has_media(media):
+                    lookup_media, target_media, season, episode = self._watchlist_target(media)
+                    existing = self._plex_has_media(media)
+                    current_quality_rank = self._managed_media_quality_rank(target_media)
+                    target_quality_rank = self._watchlist_target_quality_rank(
+                        str(settings.get("plex_watchlist_profile", "best"))
+                    )
+                    upgrading = bool(
+                        existing
+                        and settings.get("plex_watchlist_auto_upgrade", True)
+                        and current_quality_rank
+                        and current_quality_rank < target_quality_rank
+                    )
+                    if existing and not upgrading:
                         self.store.update_watchlist_item(
                             identity,
                             "already_in_plex",
-                            "Already available in a Plex library",
+                            (
+                                "Already available at the requested quality"
+                                if current_quality_rank
+                                else "Already available in a Plex library"
+                            ),
+                            job_id=job.get("id") if job else None,
                         )
                         counts["skipped_existing"] += 1
                         continue
-                    lookup_media, target_media, season, episode = self._watchlist_target(media)
                     streams, warnings = self._lookup_streams(
                         lookup_media, season, episode
                     )
@@ -466,10 +536,16 @@ class VortexoService:
                         max_size_gb=float(
                             settings.get("plex_watchlist_max_size_gb", 80)
                         ),
+                        media=target_media,
+                        minimum_quality_rank=(
+                            current_quality_rank if upgrading else 0
+                        ),
                     )
                     if not selected:
                         detail = (
-                            "No cached addable release matched the Watchlist profile"
+                            "No safer higher-quality cached release is available yet"
+                            if upgrading
+                            else "No cached addable release matched the Watchlist profile"
                             if settings.get("plex_watchlist_cached_only", True)
                             else "No addable release matched the Watchlist profile"
                         )
@@ -477,12 +553,15 @@ class VortexoService:
                             detail = warnings[0]
                         self.store.update_watchlist_item(
                             identity,
-                            "no_cached_release",
+                            "upgrade_waiting" if upgrading else "no_cached_release",
                             detail,
                             next_retry_at=now + retry_delay,
                             increment_attempts=True,
                         )
-                        counts["unavailable"] += 1
+                        if upgrading:
+                            counts["skipped_active"] += 1
+                        else:
+                            counts["unavailable"] += 1
                         continue
                     stored_stream = self.store.save_streams(
                         str(target_media.get("discover_id") or media["discover_id"]),
@@ -493,7 +572,11 @@ class VortexoService:
                         str(target_media.get("discover_id") or media["discover_id"]),
                         target_media,
                         stored_stream["id"],
-                        source="plex_watchlist",
+                        source=(
+                            "plex_watchlist_upgrade"
+                            if upgrading
+                            else "plex_watchlist"
+                        ),
                         retry_failed=True,
                     )
                     self.store.update_watchlist_item(
@@ -866,6 +949,29 @@ class VortexoService:
                 raise IntegrationError(
                     f"TorBox release title does not match {requested_title}; nothing was linked"
                 )
+            if str(payload.get("source") or "").startswith("plex_watchlist"):
+                actual_stream = {
+                    **stream,
+                    "file_name": " ".join(
+                        filter(
+                            None,
+                            [
+                                str(torrent.get("name") or ""),
+                                str(video.get("path") or ""),
+                            ],
+                        )
+                    ),
+                    "size_gb": (
+                        round(float(video.get("size") or 0) / (1024 ** 3), 2)
+                        if video.get("size")
+                        else float(stream.get("size_gb") or 0)
+                    ),
+                }
+                if not automatic_release_is_suitable(media, actual_stream):
+                    raise IntegrationError(
+                        "Automatic release failed title, trailer, or quality safety checks; "
+                        "nothing was linked"
+                    )
             source_path = self._wait_for_mount_file(
                 str(torrent.get("name") or ""),
                 video["path"],

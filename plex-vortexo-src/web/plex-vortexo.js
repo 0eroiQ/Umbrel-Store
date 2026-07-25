@@ -278,6 +278,7 @@
     const profile = status.plex_watchlist_profile || watchlist.profile || "best";
     const enabled = Boolean(status.plex_watchlist_enabled ?? watchlist.enabled ?? false);
     const cachedOnly = Boolean(status.plex_watchlist_cached_only ?? watchlist.cached_only ?? true);
+    const autoUpgrade = Boolean(status.plex_watchlist_auto_upgrade ?? watchlist.auto_upgrade ?? true);
     container.innerHTML = `
       <div class="vortexo-setup">
         <div class="vortexo-callout">
@@ -326,6 +327,10 @@
           <input type="checkbox" data-vortexo-watchlist-cached ${cachedOnly ? "checked" : ""}>
           <span>Cached TorBox releases only</span>
         </label>
+        <label class="vortexo-check">
+          <input type="checkbox" data-vortexo-watchlist-upgrade ${autoUpgrade ? "checked" : ""}>
+          <span>Automatically add a safer higher-quality version when one becomes available</span>
+        </label>
         <div class="vortexo-actions">
           <button class="vortexo-secondary" data-vortexo-sync>Sync Watchlist now</button>
           <button class="vortexo-primary" data-vortexo-save>Save and connect</button>
@@ -370,6 +375,7 @@
             plex_watchlist_max_size_gb: Number(container.querySelector("[data-vortexo-watchlist-size]").value),
             plex_watchlist_max_items: Number(container.querySelector("[data-vortexo-watchlist-limit]").value),
             plex_watchlist_cached_only: container.querySelector("[data-vortexo-watchlist-cached]").checked,
+            plex_watchlist_auto_upgrade: container.querySelector("[data-vortexo-watchlist-upgrade]").checked,
             plex_watchlist_show_mode: "first_episode",
           }),
         });

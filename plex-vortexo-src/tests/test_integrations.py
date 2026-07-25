@@ -5,6 +5,7 @@ import urllib.error
 from unittest import mock
 
 from vortexo.integrations import (
+    automatic_release_is_suitable,
     IntegrationError,
     choose_video_file,
     deduplicate_streams,
@@ -261,6 +262,43 @@ class StreamNormalizationTests(unittest.TestCase):
             )
         )
 
+    def test_rejects_soulm8te_mimoni_and_trailer_false_matches(self):
+        self.assertFalse(
+            release_matches_media(
+                {"type": "movie", "title": "Soulm8te", "year": 2026},
+                {"name": "Soulmates.2025.720p.WEBRip.Hindi"},
+                {"path": "Soulmates.2025.720p.WEBRip.Hindi.mkv"},
+            )
+        )
+        self.assertFalse(
+            release_matches_media(
+                {"type": "movie", "title": "Minions & Monsters", "year": 2026},
+                {"name": "Mimoni a monstra"},
+                {"path": "Mimoni a monstra.mkv"},
+            )
+        )
+        self.assertFalse(
+            release_matches_media(
+                {"type": "movie", "title": "Memento", "year": 2000},
+                {"name": "Memento 2000"},
+                {"path": "Memento.2000.Official.Trailer.1080p.mkv"},
+            )
+        )
+
+    def test_video_selection_never_chooses_trailers_or_samples(self):
+        torrent = {
+            "files": [
+                {"id": 1, "name": "Movie.2026.Trailer.mkv", "size": 20_000},
+                {"id": 2, "name": "Movie.2026.mkv", "size": 10_000},
+            ]
+        }
+        self.assertEqual(choose_video_file(torrent)["file_id"], 2)
+        self.assertIsNone(
+            choose_video_file(
+                {"files": [{"id": 1, "name": "Movie.Sample.mkv", "size": 10_000}]}
+            )
+        )
+
     def test_accepts_matching_movie_and_episode_releases(self):
         self.assertTrue(
             release_matches_media(
@@ -328,6 +366,56 @@ class StreamNormalizationTests(unittest.TestCase):
         )
         self.assertIsNone(
             select_automatic_stream([rows[-1]], "best", cached_only=True)
+        )
+
+    def test_automatic_selection_rejects_tiny_cam_and_wrong_title_releases(self):
+        media = {"type": "movie", "title": "Memento", "year": 2000}
+        rows = [
+            {
+                "info_hash": "tiny",
+                "quality": "1080p",
+                "size_gb": 0.4,
+                "cached": True,
+                "can_add": True,
+                "file_name": "Memento.2000.1080p.mkv",
+            },
+            {
+                "info_hash": "cam",
+                "quality": "1080p",
+                "size_gb": 4,
+                "cached": True,
+                "can_add": True,
+                "file_name": "Memento.2000.HDCAM.1080p.mkv",
+            },
+            {
+                "info_hash": "wrong",
+                "quality": "4K",
+                "size_gb": 20,
+                "cached": True,
+                "can_add": True,
+                "file_name": "Iron.Man.2008.2160p.mkv",
+            },
+            {
+                "info_hash": "safe",
+                "quality": "1080p",
+                "size_gb": 4,
+                "cached": True,
+                "can_add": True,
+                "file_name": "Memento.2000.1080p.WEB-DL.mkv",
+            },
+        ]
+        self.assertFalse(automatic_release_is_suitable(media, rows[0]))
+        self.assertEqual(
+            select_automatic_stream(rows, "best", media=media)["info_hash"],
+            "safe",
+        )
+        self.assertIsNone(
+            select_automatic_stream(
+                [rows[-1]],
+                "best",
+                media=media,
+                minimum_quality_rank=3,
+            )
         )
 
     def test_manifest_lookup_uses_movie_and_series_stremio_routes(self):
