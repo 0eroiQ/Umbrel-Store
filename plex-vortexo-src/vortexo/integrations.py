@@ -62,14 +62,10 @@ def plex_owner_token(preferences_path: str) -> str:
 
 
 def plex_cloud_headers(token: str) -> dict:
+    """Authenticate to Plex cloud without publishing a companion identity."""
     return {
         "Accept": "application/json",
         "X-Plex-Token": token,
-        "X-Plex-Product": "Plex Vortexo",
-        "X-Plex-Version": "0.1.0",
-        "X-Plex-Client-Identifier": "plex-vortexo-umbrel",
-        "X-Plex-Platform": "Web",
-        "X-Plex-Language": "en",
     }
 
 
