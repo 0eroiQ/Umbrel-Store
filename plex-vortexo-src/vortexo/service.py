@@ -30,8 +30,9 @@ from .integrations import (
     json_request,
     normalise_title,
     plex_account,
-    plex_headers,
+    plex_cloud_headers,
     plex_owner_token,
+    plex_server_headers,
     select_automatic_stream,
     torrent_completed,
 )
@@ -162,7 +163,7 @@ class VortexoService:
             try:
                 request = urllib.request.Request(
                     f"{self.plex_base_url}/identity",
-                    headers=plex_headers(owner_token),
+                    headers=plex_server_headers(owner_token),
                 )
                 with urllib.request.urlopen(request, timeout=3) as response:
                     plex = {
@@ -368,7 +369,7 @@ class VortexoService:
         query = urllib.parse.urlencode({"query": title, "includeGuids": "1"})
         payload = json_request(
             f"{self.plex_base_url}/search?{query}",
-            headers=plex_headers(self.owner_token),
+            headers=plex_server_headers(self.owner_token),
             timeout=20,
         )
         rows = payload.get("MediaContainer", {}).get("Metadata") or []
@@ -690,7 +691,12 @@ class VortexoService:
         }
         url = "https://discover.provider.plex.tv/actions/scrobble?" + urllib.parse.urlencode(params)
         try:
-            json_request(url, method="PUT", headers=plex_headers(self.owner_token), payload={})
+            json_request(
+                url,
+                method="PUT",
+                headers=plex_cloud_headers(self.owner_token),
+                payload={},
+            )
         except IntegrationError:
             pass
 
@@ -711,7 +717,7 @@ class VortexoService:
         try:
             timeline = urllib.request.Request(
                 f"{self.plex_base_url}/:/timeline?{urllib.parse.urlencode(params)}",
-                headers=plex_headers(self.owner_token),
+                headers=plex_server_headers(self.owner_token),
             )
             urllib.request.urlopen(timeline, timeout=10).read()
             if completed:
@@ -723,7 +729,7 @@ class VortexoService:
                 )
                 scrobble = urllib.request.Request(
                     f"{self.plex_base_url}/:/scrobble?{scrobble_params}",
-                    headers=plex_headers(self.owner_token),
+                    headers=plex_server_headers(self.owner_token),
                 )
                 urllib.request.urlopen(scrobble, timeout=10).read()
         except (urllib.error.URLError, TimeoutError):
@@ -1003,7 +1009,7 @@ class VortexoService:
 
     def _plex_sections(self) -> list[dict]:
         url = f"{self.plex_base_url}/library/sections"
-        payload = json_request(url, headers=plex_headers(self.owner_token))
+        payload = json_request(url, headers=plex_server_headers(self.owner_token))
         container = payload.get("MediaContainer", {}) if isinstance(payload, dict) else {}
         return container.get("Directory") or []
 
@@ -1020,7 +1026,7 @@ class VortexoService:
         try:
             request = urllib.request.Request(
                 f"{self.plex_base_url}/library/sections/{section_id}/refresh?{query}",
-                headers=plex_headers(self.owner_token),
+                headers=plex_server_headers(self.owner_token),
             )
             urllib.request.urlopen(request, timeout=20).read()
         except (urllib.error.URLError, TimeoutError) as error:
@@ -1045,7 +1051,7 @@ class VortexoService:
     def _episode_rating_key(self, show_rating_key: str, season: int, episode: int) -> str:
         payload = json_request(
             f"{self.plex_base_url}/library/metadata/{show_rating_key}/allLeaves",
-            headers=plex_headers(self.owner_token),
+            headers=plex_server_headers(self.owner_token),
             timeout=20,
         )
         rows = payload.get("MediaContainer", {}).get("Metadata") or []
@@ -1060,7 +1066,7 @@ class VortexoService:
     def _plex_item_contains_file(self, rating_key: str, link_path: str) -> bool:
         payload = json_request(
             f"{self.plex_base_url}/library/metadata/{rating_key}",
-            headers=plex_headers(self.owner_token),
+            headers=plex_server_headers(self.owner_token),
             timeout=20,
         )
         rows = payload.get("MediaContainer", {}).get("Metadata") or []
@@ -1089,7 +1095,7 @@ class VortexoService:
             try:
                 payload = json_request(
                     f"{self.plex_base_url}/search?{query}",
-                    headers=plex_headers(self.owner_token),
+                    headers=plex_server_headers(self.owner_token),
                     timeout=20,
                 )
             except IntegrationError:

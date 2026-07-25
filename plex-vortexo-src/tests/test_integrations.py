@@ -15,11 +15,30 @@ from vortexo.integrations import (
     normalize_discover_id,
     normalize_media,
     normalize_stream,
+    plex_cloud_headers,
+    plex_server_headers,
     select_automatic_stream,
 )
 
 
 class DiscoverIdentityTests(unittest.TestCase):
+    def test_local_plex_headers_do_not_override_server_identity(self):
+        headers = plex_server_headers("owner-token")
+        self.assertEqual(headers["X-Plex-Token"], "owner-token")
+        for name in (
+            "X-Plex-Product",
+            "X-Plex-Version",
+            "X-Plex-Client-Identifier",
+            "X-Plex-Platform",
+        ):
+            self.assertNotIn(name, headers)
+
+    def test_cloud_headers_keep_vortexo_client_identity(self):
+        headers = plex_cloud_headers("owner-token")
+        self.assertEqual(headers["X-Plex-Product"], "Plex Vortexo")
+        self.assertEqual(headers["X-Plex-Version"], "0.1.0")
+        self.assertEqual(headers["X-Plex-Platform"], "Web")
+
     def test_normalizes_discover_routes_and_rejects_remote_ids(self):
         self.assertEqual(
             normalize_discover_id("%2Flibrary%2Fmetadata%2F5d776d1796b655001fe3f324"),
