@@ -476,13 +476,7 @@ def looks_cached(raw: dict, searchable: str, url: str) -> bool:
 
 
 def stream_sort_key(stream: dict):
-    rank = {
-        "4K": 5,
-        "1440p": 4,
-        "1080p": 3,
-        "720p": 2,
-        "480p": 1,
-    }.get(stream.get("quality"), 0)
+    rank = quality_rank(stream.get("quality"))
     return (
         1 if stream.get("can_play_now") and stream.get("cached") else 0,
         1 if stream.get("can_play_now") else 0,
@@ -511,16 +505,75 @@ def deduplicate_streams(streams: list[dict]) -> list[dict]:
     return sorted(unique, key=stream_sort_key, reverse=True)
 
 
+QUALITY_RANKS = {"4K": 5, "1440p": 4, "1080p": 3, "720p": 2, "480p": 1}
+AUTOMATIC_MOVIE_MIN_SIZE_GB = {
+    "4K": 3.0,
+    "1440p": 1.5,
+    "1080p": 1.0,
+    "720p": 0.5,
+    "480p": 0.2,
+}
+AUTOMATIC_EPISODE_MIN_SIZE_GB = {
+    "4K": 1.0,
+    "1440p": 0.6,
+    "1080p": 0.35,
+    "720p": 0.18,
+    "480p": 0.08,
+}
+POOR_RELEASE_PATTERN = re.compile(
+    r"\b(?:cam|camrip|hdcam|telesync|telecine|dvdscr|screener|workprint)\b",
+    re.I,
+)
+EXTRA_VIDEO_PATTERN = re.compile(
+    r"\b(?:trailer|teaser|sample|featurette|extras?|behind[ ._-]+the[ ._-]+scenes)\b",
+    re.I,
+)
+
+
+def quality_rank(value: str | None) -> int:
+    return QUALITY_RANKS.get(str(value or ""), 0)
+
+
+def automatic_release_is_suitable(media: dict, stream: dict) -> bool:
+    """Fail closed for unsafe or visibly poor automatic Watchlist releases."""
+    file_name = str(stream.get("file_name") or "")
+    if not file_name or POOR_RELEASE_PATTERN.search(file_name):
+        return False
+    if not release_matches_media(
+        media,
+        {"name": file_name},
+        {"path": file_name},
+    ):
+        return False
+    quality = str(stream.get("quality") or "")
+    if not quality_rank(quality):
+        return False
+    size_gb = float(stream.get("size_gb") or 0)
+    minimums = (
+        AUTOMATIC_EPISODE_MIN_SIZE_GB
+        if media.get("type") in {"show", "episode"} or media.get("season")
+        else AUTOMATIC_MOVIE_MIN_SIZE_GB
+    )
+    return not size_gb or size_gb >= minimums.get(quality, 0)
+
+
 def select_automatic_stream(
     streams: list[dict],
     profile: str = "best",
     *,
     cached_only: bool = True,
     max_size_gb: float = 0,
+    media: dict | None = None,
+    minimum_quality_rank: int = 0,
 ) -> dict | None:
     candidates = [
         stream for stream in streams
-        if stream.get("can_add") and (stream.get("cached") or not cached_only)
+        if (
+            stream.get("can_add")
+            and (stream.get("cached") or not cached_only)
+            and quality_rank(stream.get("quality")) > minimum_quality_rank
+            and (media is None or automatic_release_is_suitable(media, stream))
+        )
     ]
     if max_size_gb > 0:
         candidates = [
@@ -529,18 +582,17 @@ def select_automatic_stream(
         ]
     if not candidates:
         return None
-    quality_rank = {"4K": 5, "1440p": 4, "1080p": 3, "720p": 2, "480p": 1}
     profile = profile if profile in {"best", "4k", "1080p"} else "best"
     if profile == "1080p":
         preferred = [
             stream for stream in candidates
-            if quality_rank.get(stream.get("quality"), 0) <= quality_rank["1080p"]
+            if quality_rank(stream.get("quality")) <= QUALITY_RANKS["1080p"]
         ]
         if preferred:
             candidates = preferred
 
     def selection_key(stream: dict):
-        rank = quality_rank.get(stream.get("quality"), 0)
+        rank = quality_rank(stream.get("quality"))
         if profile == "4k":
             profile_rank = 2 if stream.get("quality") == "4K" else 1
         elif profile == "1080p":
@@ -714,6 +766,11 @@ def release_matches_media(media: dict, torrent: dict, video: dict) -> bool:
     )
     if not requested_title or not release_text.strip():
         return False
+    if (
+        EXTRA_VIDEO_PATTERN.search(release_text)
+        and not EXTRA_VIDEO_PATTERN.search(requested_title)
+    ):
+        return False
 
     requested_year = str(media.get("year") or "").strip()
     release_years = set(re.findall(r"\b(?:19|20)\d{2}\b", release_text))
@@ -770,13 +827,21 @@ def torrent_video_files(torrent: dict) -> list[dict]:
 
 def choose_video_file(torrent: dict, season: int = 0, episode: int = 0, file_idx=None) -> dict | None:
     videos = torrent_video_files(torrent)
+    feature_videos = [
+        video for video in videos
+        if not EXTRA_VIDEO_PATTERN.search(os.path.basename(video["path"]))
+    ]
     if file_idx is not None:
-        for video in videos:
+        for video in feature_videos:
             if str(video["file_id"]) == str(file_idx):
                 return video
     if season and episode:
         marker = re.compile(rf"\bS0*{season}E0*{episode}\b|\b0*{season}x0*{episode}\b", re.I)
-        for video in videos:
+        for video in feature_videos:
             if marker.search(video["path"]):
                 return video
-    return max(videos, key=lambda item: int(item.get("size") or 0), default=None)
+    return max(
+        feature_videos,
+        key=lambda item: int(item.get("size") or 0),
+        default=None,
+    )
