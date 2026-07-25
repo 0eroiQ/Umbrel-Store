@@ -17,6 +17,7 @@ from vortexo.integrations import (
     normalize_stream,
     plex_cloud_headers,
     plex_server_headers,
+    release_matches_media,
     select_automatic_stream,
 )
 
@@ -236,6 +237,55 @@ class StreamNormalizationTests(unittest.TestCase):
             ]
         }
         self.assertEqual(choose_video_file(torrent, 1, 2)["file_id"], 2)
+
+    def test_rejects_release_for_a_different_movie_before_linking(self):
+        self.assertFalse(
+            release_matches_media(
+                {
+                    "type": "movie",
+                    "title": "Spider-Man Brand New Day",
+                    "year": 2026,
+                },
+                {
+                    "name": (
+                        "www.IJIndex.org - Marvel Studios Iron Man 2008 "
+                        "1080p MA WEB-DL DDP5 1 H 264-SARVO"
+                    )
+                },
+                {
+                    "path": (
+                        "Marvel Studios Iron Man 2008 1080p MA WEB-DL "
+                        "DDP5 1 H 264-SARVO.mkv"
+                    )
+                },
+            )
+        )
+
+    def test_accepts_matching_movie_and_episode_releases(self):
+        self.assertTrue(
+            release_matches_media(
+                {
+                    "type": "movie",
+                    "title": "Spider-Man: Brand New Day",
+                    "year": 2026,
+                },
+                {"name": "Spider-Man.Brand.New.Day.2026.1080p.WEB-DL"},
+                {"path": "Spider-Man.Brand.New.Day.2026.1080p.mkv"},
+            )
+        )
+        self.assertTrue(
+            release_matches_media(
+                {
+                    "type": "episode",
+                    "title": "Woe's Hollow",
+                    "parent_title": "Severance",
+                    "season": 2,
+                    "episode": 4,
+                },
+                {"name": "Severance Season 2"},
+                {"path": "Severance.S02E04.1080p.mkv"},
+            )
+        )
 
     def test_automatic_stream_selection_is_cached_profile_and_size_aware(self):
         rows = [

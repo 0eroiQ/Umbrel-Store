@@ -698,6 +698,50 @@ def normalise_title(value: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", value.lower()))
 
 
+def release_matches_media(media: dict, torrent: dict, video: dict) -> bool:
+    """Fail closed when TorBox returned a release for a different title."""
+    requested_title = str(
+        (media.get("parent_title") or media.get("title"))
+        if media.get("type") == "episode"
+        else media.get("title")
+        or ""
+    ).strip()
+    release_text = " ".join(
+        (
+            str(torrent.get("name") or ""),
+            str(video.get("path") or video.get("name") or ""),
+        )
+    )
+    if not requested_title or not release_text.strip():
+        return False
+
+    requested_year = str(media.get("year") or "").strip()
+    release_years = set(re.findall(r"\b(?:19|20)\d{2}\b", release_text))
+    if requested_year and release_years and requested_year not in release_years:
+        return False
+
+    def tokens(value: str) -> list[str]:
+        value = value.replace("&", " and ")
+        words = re.findall(r"[a-z0-9]+", value.casefold())
+        significant = [word for word in words if word not in {"a", "an", "the"}]
+        return significant or words
+
+    requested_tokens = tokens(requested_title)
+    release_tokens = tokens(release_text)
+    if not requested_tokens or not release_tokens:
+        return False
+
+    # Require the complete requested title in the same order. Extra release
+    # metadata may appear between words, but a partial token overlap is unsafe.
+    position = 0
+    for token in release_tokens:
+        if token == requested_tokens[position]:
+            position += 1
+            if position == len(requested_tokens):
+                return True
+    return False
+
+
 def torrent_completed(torrent: dict) -> bool:
     return bool(
         torrent.get("cached")

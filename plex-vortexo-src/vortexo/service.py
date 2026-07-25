@@ -33,6 +33,7 @@ from .integrations import (
     plex_cloud_headers,
     plex_owner_token,
     plex_server_headers,
+    release_matches_media,
     select_automatic_stream,
     torrent_completed,
 )
@@ -858,6 +859,13 @@ class VortexoService:
             )
             if not video:
                 raise IntegrationError("No matching video file was found in the TorBox release")
+            if not release_matches_media(media, torrent, video):
+                requested_title = (
+                    media.get("parent_title") or media.get("title") or "requested item"
+                )
+                raise IntegrationError(
+                    f"TorBox release title does not match {requested_title}; nothing was linked"
+                )
             source_path = self._wait_for_mount_file(
                 str(torrent.get("name") or ""),
                 video["path"],
