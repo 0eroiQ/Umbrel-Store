@@ -33,11 +33,16 @@ class DiscoverIdentityTests(unittest.TestCase):
         ):
             self.assertNotIn(name, headers)
 
-    def test_cloud_headers_keep_vortexo_client_identity(self):
+    def test_cloud_headers_do_not_publish_companion_identity(self):
         headers = plex_cloud_headers("owner-token")
-        self.assertEqual(headers["X-Plex-Product"], "Plex Vortexo")
-        self.assertEqual(headers["X-Plex-Version"], "0.1.0")
-        self.assertEqual(headers["X-Plex-Platform"], "Web")
+        self.assertEqual(headers["X-Plex-Token"], "owner-token")
+        for name in (
+            "X-Plex-Product",
+            "X-Plex-Version",
+            "X-Plex-Client-Identifier",
+            "X-Plex-Platform",
+        ):
+            self.assertNotIn(name, headers)
 
     def test_normalizes_discover_routes_and_rejects_remote_ids(self):
         self.assertEqual(
