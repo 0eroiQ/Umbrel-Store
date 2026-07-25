@@ -4,7 +4,7 @@ name: Riven TS
 tagline: Experimental TypeScript Riven backend
 icon: https://avatars.githubusercontent.com/u/172203452?v=4
 category: media
-version: "main-0652bdf-umbrel1"
+version: "main-fd47707-umbrel1"
 port: 8097
 description: >-
   Riven TS is the experimental TypeScript rewrite of Riven. This package is for testing the backend on Umbrel with Postgres, Redis, and FUSE enabled.
