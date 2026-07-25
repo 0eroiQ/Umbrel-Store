@@ -178,7 +178,7 @@ class ServiceTests(unittest.TestCase):
         response.__enter__.return_value = response
         response.__exit__.return_value = False
         with mock.patch("vortexo.service.json_request", side_effect=json_response):
-            with mock.patch("urllib.request.urlopen", return_value=response):
+            with mock.patch("urllib.request.urlopen", return_value=response) as open_url:
                 with mock.patch(
                     "vortexo.service.TorBoxClient.health",
                     return_value={"online": True, "detail": "Connected"},
@@ -189,6 +189,11 @@ class ServiceTests(unittest.TestCase):
         self.assertTrue(status["source_lookup"]["online"])
         self.assertTrue(status["mount"]["online"])
         self.assertNotIn("private-key", str(status))
+        request = open_url.call_args.args[0]
+        self.assertEqual(request.get_header("X-plex-token"), "owner-token")
+        self.assertIsNone(request.get_header("X-plex-product"))
+        self.assertIsNone(request.get_header("X-plex-version"))
+        self.assertIsNone(request.get_header("X-plex-platform"))
 
     def test_plex_confirmation_requires_exact_linked_episode_version(self):
         def response(url, **_kwargs):

@@ -61,7 +61,7 @@ def plex_owner_token(preferences_path: str) -> str:
     return (root.attrib.get("PlexOnlineToken") or "").strip()
 
 
-def plex_headers(token: str) -> dict:
+def plex_cloud_headers(token: str) -> dict:
     return {
         "Accept": "application/json",
         "X-Plex-Token": token,
@@ -73,12 +73,25 @@ def plex_headers(token: str) -> dict:
     }
 
 
+def plex_server_headers(token: str) -> dict:
+    """Authenticate to the local PMS without overriding its published identity."""
+    return {
+        "Accept": "application/json",
+        "X-Plex-Token": token,
+    }
+
+
+def plex_headers(token: str) -> dict:
+    """Compatibility alias for Plex cloud-client requests."""
+    return plex_cloud_headers(token)
+
+
 def plex_account(token: str) -> dict:
     if not token:
         return {}
     payload = json_request(
         "https://plex.tv/api/v2/user",
-        headers=plex_headers(token),
+        headers=plex_cloud_headers(token),
         timeout=10,
     )
     if not isinstance(payload, dict):
@@ -106,7 +119,7 @@ def discover_metadata(discover_id: str, token: str) -> dict:
         urllib.parse.quote(discover_id, safe=""),
         urllib.parse.urlencode(params),
     )
-    payload = json_request(url, headers=plex_headers(token))
+    payload = json_request(url, headers=plex_cloud_headers(token))
     container = payload.get("MediaContainer", {}) if isinstance(payload, dict) else {}
     rows = container.get("Metadata") or container.get("Directory") or []
     if not rows:
@@ -128,7 +141,7 @@ def discover_children(path: str, token: str, limit: int = 1000) -> list[dict]:
         "X-Plex-Container-Size": str(max(1, min(limit, 1000))),
     }
     url = "https://discover.provider.plex.tv{}?{}".format(path, urllib.parse.urlencode(params))
-    payload = json_request(url, headers=plex_headers(token))
+    payload = json_request(url, headers=plex_cloud_headers(token))
     container = payload.get("MediaContainer", {}) if isinstance(payload, dict) else {}
     rows = [*(container.get("Directory") or []), *(container.get("Metadata") or [])]
     return [normalize_media(row) for row in rows]
@@ -236,7 +249,7 @@ def fetch_plex_watchlist(token: str, limit: int = 100) -> list[dict]:
         )
         payload = json_request(
             f"{endpoint}?{query}",
-            headers=plex_headers(token),
+            headers=plex_cloud_headers(token),
             timeout=20,
         )
         container = payload.get("MediaContainer", {}) if isinstance(payload, dict) else {}
