@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-plex
 category: media
 name: Plex (Vortexo)
-version: "1.43.3.10828.18"
+version: "1.43.3.10828.19"
 tagline: Plex Discover with private TorBox streaming
 icon: https://avatars.githubusercontent.com/u/11744877?v=4
 description: >-
@@ -45,17 +45,17 @@ torOnly: false
 permissions:
   - GPU
 releaseNotes: >-
-  Prevents a mislabeled TorBox result from being linked under the wrong Plex
-  title.
+  Hardens automatic TorBox imports against wrong movies, trailers, samples,
+  featurettes, obvious CAM or screener releases, and undersized quality
+  claims.
 
 
-  Before creating any library link, Vortexo now verifies the requested movie
-  or show title against the actual TorBox torrent and selected video filename.
-  Conflicting release years are also rejected.
+  Plex Watchlist automation can now add a safer higher-quality version when
+  one becomes available. Existing good versions are preserved.
 
 
-  A mismatch fails safely before mount lookup, symlink creation, or Plex
-  scanning. The job keeps a clear failure reason and Watchlist automation can
-  retry later when a genuine cached release becomes available.
+  A recoverable library audit quarantines only high-confidence bad symlinks
+  and records a restoration manifest. Ambiguous alternate-year releases are
+  left untouched for review.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store/pull/2
