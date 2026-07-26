@@ -4,7 +4,7 @@ name: Riven
 tagline: Debrid-powered media manager for Plex and Jellyfin
 icon: https://avatars.githubusercontent.com/u/172203452?v=4
 category: media
-version: "v0.23.6-34"
+version: "v0.23.6-35"
 port: 8080
 description: >-
   Riven builds a virtual media library from your configured Debrid and media manager services, then exposes it as a browsable filesystem for apps like Plex.
@@ -33,7 +33,7 @@ repo: https://github.com/rivenmedia/riven
 support: https://github.com/rivenmedia/riven/issues
 gallery: []
 releaseNotes: >-
-  Fixes items still stuck at Unknown state after v0.23.6-33. The eager per-file requestdl approach tripped the TorBox rate limit, causing all URL resolution to fail. Replaced with a synthetic link format that requires zero API calls during scanning — the real CDN URL is resolved lazily only when the file is actually accessed.
+  Fixes Plex not seeing Riven's media. The mount path has moved from data/storage/downloads/riven to home/Downloads/riven so it lands inside the stock Umbrel Plex app's /downloads volume. Plex will now see Riven's library at /downloads/riven/movies and /downloads/riven/shows. The pre-start hook also cleans up the old mount path on upgrade.
 dependencies: []
 path: ""
 defaultUsername: "riven"

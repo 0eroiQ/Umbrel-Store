@@ -3,8 +3,11 @@ set -euo pipefail
 
 APP_DIR="$(readlink -f "$(dirname "${BASH_SOURCE[0]}")/..")"
 APP_DATA_DIR="${APP_DIR}/data"
-MOUNT_DIR="${UMBREL_ROOT}/data/storage/downloads/riven"
-LEGACY_MOUNT_DIR="${UMBREL_ROOT}/home/Downloads/riven"
+# MOUNT_DIR must be under home/Downloads/ because that's the path the stock
+# Umbrel Plex app bind-mounts into its container at /downloads. Only paths
+# under home/Downloads/riven/ will be visible to Plex as /downloads/riven/.
+MOUNT_DIR="${UMBREL_ROOT}/home/Downloads/riven"
+LEGACY_MOUNT_DIR="${UMBREL_ROOT}/data/storage/downloads/riven"
 RIVEN_DATA_DIR="${APP_DATA_DIR}/riven"
 FRONTEND_DATA_DIR="${APP_DATA_DIR}/frontend"
 POSTGRES_DATA_DIR="${APP_DATA_DIR}/postgres"
@@ -43,13 +46,11 @@ force_cleanup_fuse_mount() {
 
 raise_inotify_limits
 
-# The legacy path (home/Downloads/riven) was used by older Riven builds and is
-# no longer part of the compose mounts. Any leftover FUSE mount there competes
-# with the current /mount -> data/storage/downloads/riven bind and misdirects
-# the live RivenVFS. Remove it unconditionally on every start.
+# The legacy path (data/storage/downloads/riven) was used by v0.23.6-28..34 but
+# is NOT under the stock Umbrel Plex app's /downloads mount, so Plex could never
+# see Riven's content. Clean up any stale FUSE mount there and switch to
+# home/Downloads/riven which Plex mounts as /downloads/riven.
 force_cleanup_fuse_mount "${LEGACY_MOUNT_DIR}"
-mkdir -p "$(dirname "${LEGACY_MOUNT_DIR}")" 2>/dev/null || true
-rmdir "${LEGACY_MOUNT_DIR}" 2>/dev/null || true
 
 cleanup_stale_mount "${LEGACY_MOUNT_DIR}"
 mkdir -p "$(dirname "${MOUNT_DIR}")"

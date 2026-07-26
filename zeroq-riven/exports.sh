@@ -1,6 +1,6 @@
 export APP_ZEROQ_RIVEN_URL="http://zeroq-riven_server_1:8080"
 export APP_ZEROQ_RIVEN_DATA_DIR="${EXPORTS_APP_DIR}/data/riven"
-export APP_ZEROQ_RIVEN_MOUNT_DIR="${UMBREL_ROOT}/data/storage/downloads/riven"
+export APP_ZEROQ_RIVEN_MOUNT_DIR="${UMBREL_ROOT}/home/Downloads/riven"
 export APP_ZEROQ_RIVEN_PORT="8080"
 export APP_ZEROQ_RIVEN_WEBDAV_PORT="8081"
 export APP_ZEROQ_RIVEN_FTP_PORT="2121"
