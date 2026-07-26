@@ -26,7 +26,31 @@ cleanup_stale_mount() {
   fi
 }
 
+force_cleanup_fuse_mount() {
+  # Remove ANY fuse/rivenvfs mount on the given path, even if it appears readable.
+  # A stale FUSE mount whose backing process died returns "Transport endpoint is
+  # not connected", but one whose backing process was replaced by a newer Riven
+  # instance can appear readable yet serve stale/empty data. We unconditionally
+  # tear down fuse mounts here so the current Riven container's VFS is the only
+  # one authoritative.
+  local path="$1"
+
+  if findmnt -T "${path}" -o FSTYPE -n 2>/dev/null | grep -qiE "fuse"; then
+    echo "Removing stale FUSE mount at ${path}"
+    umount -l "${path}" 2>/dev/null || true
+  fi
+}
+
 raise_inotify_limits
+
+# The legacy path (home/Downloads/riven) was used by older Riven builds and is
+# no longer part of the compose mounts. Any leftover FUSE mount there competes
+# with the current /mount -> data/storage/downloads/riven bind and misdirects
+# the live RivenVFS. Remove it unconditionally on every start.
+force_cleanup_fuse_mount "${LEGACY_MOUNT_DIR}"
+mkdir -p "$(dirname "${LEGACY_MOUNT_DIR}")" 2>/dev/null || true
+rmdir "${LEGACY_MOUNT_DIR}" 2>/dev/null || true
+
 cleanup_stale_mount "${LEGACY_MOUNT_DIR}"
 mkdir -p "$(dirname "${MOUNT_DIR}")"
 cleanup_stale_mount "${MOUNT_DIR}"
