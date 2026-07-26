@@ -8,7 +8,7 @@ services:
       PROXY_AUTH_ADD: "false"
 
   server:
-    image: ghcr.io/zeroq-bit/riven:sha-43b3718@sha256:25c07db31415a244b259d723c9f2cd583ca536f798dce8fc7f9f7d2768520214
+    image: ghcr.io/zeroq-bit/riven:sha-e00904f@sha256:77c7d983093e8a80fe0e481eae8b0c58c5a2b73270274919bda63fe3fb6d34fc
     restart: on-failure
     stop_grace_period: 1m
     cap_add:

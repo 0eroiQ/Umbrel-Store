@@ -4,7 +4,7 @@ name: Riven
 tagline: Debrid-powered media manager for Plex and Jellyfin
 icon: https://avatars.githubusercontent.com/u/172203452?v=4
 category: media
-version: "v0.23.6-31"
+version: "v0.23.6-32"
 port: 8080
 description: >-
   Riven builds a virtual media library from your configured Debrid and media manager services, then exposes it as a browsable filesystem for apps like Plex.
@@ -33,7 +33,7 @@ repo: https://github.com/rivenmedia/riven
 support: https://github.com/rivenmedia/riven/issues
 gallery: []
 releaseNotes: >-
-  Fixes TorBox never downloading any media. The createtorrent response was being parsed as a full torrent object, but TorBox returns a creation receipt (with `torrent_id`, no `name`), so every add-torrent call failed and every stream got blacklisted. Torrents will now be added to your TorBox account and downloaded correctly.
+  Fixes TorBox still not downloading after v0.23.6-31. The mylist response returns `created_at` as an ISO date string (e.g. `2026-07-26T02:33:36Z`), not a unix timestamp, which crashed torrent-info parsing and blacklisted every stream. All TorBox response models have been re-verified against the official TorBox SDK schemas, so parsing should now be fully correct.
 dependencies: []
 path: ""
 defaultUsername: "riven"
