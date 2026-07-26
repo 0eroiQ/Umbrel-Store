@@ -4,7 +4,7 @@ name: Riven
 tagline: Debrid-powered media manager for Plex and Jellyfin
 icon: https://avatars.githubusercontent.com/u/172203452?v=4
 category: media
-version: "v0.23.6-29"
+version: "v0.23.6-30"
 port: 8080
 description: >-
   Riven builds a virtual media library from your configured Debrid and media manager services, then exposes it as a browsable filesystem for apps like Plex.
@@ -33,9 +33,7 @@ repo: https://github.com/rivenmedia/riven
 support: https://github.com/rivenmedia/riven/issues
 gallery: []
 releaseNotes: >-
-  Fixes the dashboard showing "500 Unable to fetch downloader info data" once TorBox was enabled. The downloader-user-info endpoint now recognizes TorBox alongside the other debrid services.
-
-  TorBox downloader support is otherwise unchanged from v0.23.6-28.
+  Fixes the dashboard showing "500 Unable to fetch downloader info data" once TorBox was enabled. The TorBox /user/me response was being parsed with the wrong field types (premium expiration is an ISO date string, not a timestamp; and TorBox has no username field), which made user-info retrieval fail and starved the dashboard endpoint.
 dependencies: []
 path: ""
 defaultUsername: "riven"
