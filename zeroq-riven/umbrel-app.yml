@@ -4,7 +4,7 @@ name: Riven
 tagline: Debrid-powered media manager for Plex and Jellyfin
 icon: https://avatars.githubusercontent.com/u/172203452?v=4
 category: media
-version: "v0.23.6-38"
+version: "v0.23.6-39"
 port: 8080
 description: >-
   Riven builds a virtual media library from your configured Debrid and media manager services, then exposes it as a browsable filesystem for apps like Plex.
@@ -33,7 +33,7 @@ repo: https://github.com/rivenmedia/riven
 support: https://github.com/rivenmedia/riven/issues
 gallery: []
 releaseNotes: >-
-  Fixes failed TorBox cleanup requests by using the lowercase delete operation required by the live API. The TorBox CDN refresh and HTTP URL protections from v0.23.6-37 remain unchanged.
+  Fixes Riven virtual filesystem reads that cross into a file's footer and could fail with an invalid chunk range during Plex scans or playback. The TorBox CDN refresh and cleanup fixes from the previous releases remain unchanged.
 dependencies: []
 path: ""
 defaultUsername: "riven"
