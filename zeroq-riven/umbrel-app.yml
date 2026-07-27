@@ -33,7 +33,7 @@ repo: https://github.com/rivenmedia/riven
 support: https://github.com/rivenmedia/riven/issues
 gallery: []
 releaseNotes: >-
-  Fixes a TorBox refresh regression where Riven could retry an internal torbox locator as a web URL after an expired CDN link returned HTTP 400. Fresh TorBox links now go directly to the bounded stream retry without a redundant validation request, and only complete HTTP or HTTPS links reach the streaming client.
+  Fixes a TorBox refresh regression where Riven could retry an internal torbox locator as a web URL after an expired CDN link returned HTTP 400. Riven now accepts the live TorBox API's plain-string CDN response as well as object responses, sends fresh links directly to the bounded stream retry without a redundant validation request, and only lets complete HTTP or HTTPS links reach the streaming client.
 dependencies: []
 path: ""
 defaultUsername: "riven"
