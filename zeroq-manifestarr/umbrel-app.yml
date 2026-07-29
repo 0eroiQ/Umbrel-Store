@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-manifestarr
 category: media
 name: Manifestarr
-version: "0.1.1"
+version: "0.1.2"
 tagline: A Plex-ready virtual library resolved from Stremio add-ons
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-manifestarr/icon.png
 description: >-
