@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-manifestarr
 category: media
 name: Manifestarr
-version: "0.1.4"
+version: "0.1.5"
 tagline: A Plex-ready virtual library resolved from Stremio add-ons
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-manifestarr/icon.png
 description: >-
@@ -27,9 +27,9 @@ description: >-
   4. Connect your Stremio-compatible stream add-ons.
   5. Create the Plex movie and TV libraries using
   /downloads/manifestarr/movies and /downloads/manifestarr/shows.
-  6. Add titles through Plex Watchlist or MDBList. For a series, select the
-  seasons to sync. Released episodes and movies resolve one at a time and retry
-  provider rate limits later.
+  6. Add titles through Plex Watchlist or MDBList. For a series, select seasons
+  manually or enable automatic released-season syncing in Settings. Episodes
+  and movies resolve one at a time and retry provider rate limits later.
 
 
   The Plex service uses host port 32400 for normal Plex client discovery. Stop
@@ -50,8 +50,8 @@ permissions:
   - GPU
   - STORAGE_DOWNLOADS
 releaseNotes: >-
-  Adds selectable TV seasons and episode-by-episode syncing. Released episodes
-  enter the existing one-at-a-time resolver queue, publish with Plex-compatible
-  SxxExx paths, and show per-series progress in Requests.
+  Adds TV automation settings to exclude Specials (Season 0) and automatically
+  add every released episode when Plex Watchlist or MDBList syncs. Future
+  episodes are picked up after airing, while the resolver remains one at a time.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store/pull/31
