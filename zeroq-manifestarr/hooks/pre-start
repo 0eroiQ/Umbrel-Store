@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+APP_DIR="$(readlink -f "$(dirname "${BASH_SOURCE[0]}")/..")"
+APP_DATA_DIR="${APP_DIR}/data"
+MANIFESTARR_DATA_DIR="${APP_DATA_DIR}/manifestarr"
+PLEX_CONFIG_DIR="${APP_DATA_DIR}/plex/config"
+PLEX_TRANSCODE_DIR="${APP_DATA_DIR}/plex/transcode"
+MOUNT_DIR="${UMBREL_ROOT}/home/Downloads/manifestarr"
+
+remove_stale_fuse_layers() {
+  local path="$1"
+  local attempt
+
+  for attempt in 1 2 3 4; do
+    if ! findmnt -T "${path}" -o FSTYPE -n 2>/dev/null | grep -qi fuse; then
+      return
+    fi
+    echo "Removing stale Manifestarr FUSE layer at ${path}"
+    umount -l "${path}" 2>/dev/null || true
+  done
+
+  if findmnt -T "${path}" -o FSTYPE -n 2>/dev/null | grep -qi fuse; then
+    echo "Manifestarr will not start: stale FUSE layers remain at ${path}." >&2
+    exit 1
+  fi
+}
+
+if [[ ! -e /dev/fuse ]]; then
+  echo "Manifestarr requires /dev/fuse, but it is not available on this Umbrel host." >&2
+  exit 1
+fi
+
+mkdir -p \
+  "${MANIFESTARR_DATA_DIR}" \
+  "${PLEX_CONFIG_DIR}" \
+  "${PLEX_TRANSCODE_DIR}" \
+  "${MOUNT_DIR}"
+
+remove_stale_fuse_layers "${MOUNT_DIR}"
+
+if find "${MOUNT_DIR}" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then
+  echo "Manifestarr will not hide existing files in ${MOUNT_DIR}." >&2
+  echo "Move those files elsewhere before starting the app." >&2
+  exit 1
+fi
+
+if ! mountpoint -q "${MOUNT_DIR}"; then
+  mount --bind "${MOUNT_DIR}" "${MOUNT_DIR}"
+fi
+
+propagation="$(findmnt -T "${MOUNT_DIR}" -o PROPAGATION -n 2>/dev/null || true)"
+if [[ "${propagation}" != "shared" && "${propagation}" != "rshared" ]]; then
+  mount --make-rshared "${MOUNT_DIR}"
+fi
+
+chown -R 1000:1000 \
+  "${MANIFESTARR_DATA_DIR}" \
+  "${PLEX_CONFIG_DIR}" \
+  "${PLEX_TRANSCODE_DIR}"
+chown 1000:1000 "${MOUNT_DIR}"
+chmod 0775 "${MOUNT_DIR}"
