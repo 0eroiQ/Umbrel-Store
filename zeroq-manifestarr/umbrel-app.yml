@@ -48,11 +48,6 @@ torOnly: false
 permissions:
   - GPU
   - STORAGE_DOWNLOADS
-releaseNotes: >-
-  Initial Umbrel release. Bundles the Manifestarr WebUI, virtual-library FUSE
-  mount, and an isolated Plex Media Server in one app. Includes Plex Watchlist
-  and MDBList request feeds, ordered automatic stream selection, persistent
-  source identity, strict byte-range reads, retry-later provider handling, and
-  fail-closed mount recovery.
+releaseNotes: ""
 submitter: ZeroQ
-submission: https://github.com/ZeroQ-bit/Umbrel-Store
+submission: https://github.com/ZeroQ-bit/Umbrel-Store/pull/31
