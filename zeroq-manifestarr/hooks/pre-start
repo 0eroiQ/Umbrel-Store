@@ -35,10 +35,10 @@ fi
 mkdir -p \
   "${MANIFESTARR_DATA_DIR}" \
   "${PLEX_CONFIG_DIR}" \
-  "${PLEX_TRANSCODE_DIR}" \
-  "${MOUNT_DIR}"
+  "${PLEX_TRANSCODE_DIR}"
 
 remove_stale_fuse_layers "${MOUNT_DIR}"
+mkdir -p "${MOUNT_DIR}"
 
 if find "${MOUNT_DIR}" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then
   echo "Manifestarr will not hide existing files in ${MOUNT_DIR}." >&2
