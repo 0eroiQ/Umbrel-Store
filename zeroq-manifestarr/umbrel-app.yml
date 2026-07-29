@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-manifestarr
 category: media
 name: Manifestarr
-version: "0.1.0"
+version: "0.1.1"
 tagline: A Plex-ready virtual library resolved from Stremio add-ons
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-manifestarr/icon.png
 description: >-
@@ -21,9 +21,9 @@ description: >-
 
 
   1. Install Manifestarr and open it from the Umbrel home screen.
-  2. Claim the bundled Plex server once at http://umbrel.local:32400/web.
-  3. In Manifestarr Settings, connect your Plex account and select the
-  Manifestarr server.
+  2. In Manifestarr Settings, open the Plex claim page and paste the short-lived
+  claim code into Claim Manifestarr Plex. The code is never saved.
+  3. Connect your Plex account and select the Manifestarr server.
   4. Connect your Stremio-compatible stream add-ons.
   5. Create the Plex movie and TV libraries using
   /downloads/manifestarr/movies and /downloads/manifestarr/shows.
@@ -48,6 +48,9 @@ torOnly: false
 permissions:
   - GPU
   - STORAGE_DOWNLOADS
-releaseNotes: ""
+releaseNotes: >-
+  Adds secure in-app claiming for the Plex server bundled with Manifestarr.
+  Claim codes are sent directly to the local bundled server and are never
+  stored or returned by Manifestarr.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store/pull/31

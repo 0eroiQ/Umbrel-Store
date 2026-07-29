@@ -8,7 +8,7 @@ services:
       PROXY_AUTH_ADD: "true"
 
   api:
-    image: ghcr.io/zeroq-bit/manifestarr:0.1.0@sha256:62bb945a0adf5753543abb87179ac3cfe5d508e2b20074f2ca21f64d8f517a79
+    image: ghcr.io/zeroq-bit/manifestarr:0.1.1@sha256:291cee1f0e10a6d42b44354fd654263f1f2b2b99a1804c281a651be4861620b1
     restart: on-failure
     stop_grace_period: 30s
     command:
@@ -24,6 +24,9 @@ services:
       - --allow-private-networks
     environment:
       TZ: Etc/UTC
+      MANIFESTARR_BUNDLED_PLEX_URL: http://host.docker.internal:32400
+    extra_hosts:
+      - host.docker.internal:host-gateway
     volumes:
       - ${APP_DATA_DIR}/data/manifestarr:/data
     healthcheck:
@@ -38,7 +41,7 @@ services:
       start_period: 15s
 
   mount:
-    image: ghcr.io/zeroq-bit/manifestarr:0.1.0@sha256:62bb945a0adf5753543abb87179ac3cfe5d508e2b20074f2ca21f64d8f517a79
+    image: ghcr.io/zeroq-bit/manifestarr:0.1.1@sha256:291cee1f0e10a6d42b44354fd654263f1f2b2b99a1804c281a651be4861620b1
     restart: on-failure
     stop_grace_period: 1m
     command:
