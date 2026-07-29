@@ -8,7 +8,7 @@ services:
       PROXY_AUTH_ADD: "true"
 
   api:
-    image: ghcr.io/zeroq-bit/manifestarr:0.1.4@sha256:64780263af2fa1386815d544a0b4f94a1f14397fdc71d1e4d42eb44bb9b4244a
+    image: ghcr.io/zeroq-bit/manifestarr:0.1.5@sha256:9197e80d0bbcb5281e3a367eaaade7b944b4466c9ade4d64668ee43af1677baf
     restart: on-failure
     stop_grace_period: 30s
     command:
@@ -46,7 +46,7 @@ services:
       start_period: 15s
 
   claim_agent:
-    image: ghcr.io/zeroq-bit/manifestarr:0.1.4@sha256:64780263af2fa1386815d544a0b4f94a1f14397fdc71d1e4d42eb44bb9b4244a
+    image: ghcr.io/zeroq-bit/manifestarr:0.1.5@sha256:9197e80d0bbcb5281e3a367eaaade7b944b4466c9ade4d64668ee43af1677baf
     restart: on-failure
     stop_grace_period: 30s
     network_mode: host
@@ -76,7 +76,7 @@ services:
       start_period: 15s
 
   mount:
-    image: ghcr.io/zeroq-bit/manifestarr:0.1.4@sha256:64780263af2fa1386815d544a0b4f94a1f14397fdc71d1e4d42eb44bb9b4244a
+    image: ghcr.io/zeroq-bit/manifestarr:0.1.5@sha256:9197e80d0bbcb5281e3a367eaaade7b944b4466c9ade4d64668ee43af1677baf
     restart: on-failure
     stop_grace_period: 1m
     command:
