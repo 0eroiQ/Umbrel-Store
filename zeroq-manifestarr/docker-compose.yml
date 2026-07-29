@@ -1,0 +1,95 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: zeroq-manifestarr_api_1
+      APP_PORT: 8787
+      PROXY_AUTH_ADD: "true"
+
+  api:
+    image: ghcr.io/zeroq-bit/manifestarr:0.1.0@sha256:62bb945a0adf5753543abb87179ac3cfe5d508e2b20074f2ca21f64d8f517a79
+    restart: on-failure
+    stop_grace_period: 30s
+    command:
+      - uv
+      - run
+      - --no-dev
+      - manifestarr
+      - serve
+      - --host
+      - 0.0.0.0
+      - --database
+      - /data/manifestarr.sqlite3
+      - --allow-private-networks
+    environment:
+      TZ: Etc/UTC
+    volumes:
+      - ${APP_DATA_DIR}/data/manifestarr:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          /app/.venv/bin/python -c "import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=5).read()"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  mount:
+    image: ghcr.io/zeroq-bit/manifestarr:0.1.0@sha256:62bb945a0adf5753543abb87179ac3cfe5d508e2b20074f2ca21f64d8f517a79
+    restart: on-failure
+    stop_grace_period: 1m
+    command:
+      - uv
+      - run
+      - --no-dev
+      - --extra
+      - fuse
+      - manifestarr
+      - mount
+      - /media
+      - --database
+      - /data/manifestarr.sqlite3
+      - --allow-private-networks
+      - --allow-other
+      - --refresh-interval
+      - "5"
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse:/dev/fuse
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - ${APP_DATA_DIR}/data/manifestarr:/data
+      - ${UMBREL_ROOT}/home/Downloads/manifestarr:/media:rshared
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "mountpoint -q /media || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 15s
+
+  plex:
+    image: linuxserver/plex:1.43.3.10828-00f62d37d-ls315@sha256:59c671e182563040092a2d0901e429dc15e0aba9883acd13ef97857372b79b21
+    restart: on-failure
+    stop_grace_period: 1m
+    hostname: Manifestarr
+    network_mode: host
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+      VERSION: docker
+    volumes:
+      - ${APP_DATA_DIR}/data/plex/config:/config
+      - ${APP_DATA_DIR}/data/plex/transcode:/transcode
+      - ${UMBREL_ROOT}/home/Downloads/manifestarr:/downloads/manifestarr:rslave,ro
+    depends_on:
+      mount:
+        condition: service_healthy
