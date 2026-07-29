@@ -7,6 +7,7 @@ APP_DATA_DIR="${APP_DIR}/data"
 MANIFESTARR_DATA_DIR="${APP_DATA_DIR}/manifestarr"
 PLEX_CONFIG_DIR="${APP_DATA_DIR}/plex/config"
 PLEX_TRANSCODE_DIR="${APP_DATA_DIR}/plex/transcode"
+PLEX_CLAIM_DIR="${APP_DATA_DIR}/plex/claim"
 MOUNT_DIR="${UMBREL_ROOT}/home/Downloads/manifestarr"
 
 remove_stale_fuse_layers() {
@@ -35,7 +36,8 @@ fi
 mkdir -p \
   "${MANIFESTARR_DATA_DIR}" \
   "${PLEX_CONFIG_DIR}" \
-  "${PLEX_TRANSCODE_DIR}"
+  "${PLEX_TRANSCODE_DIR}" \
+  "${PLEX_CLAIM_DIR}"
 
 remove_stale_fuse_layers "${MOUNT_DIR}"
 mkdir -p "${MOUNT_DIR}"
@@ -58,6 +60,7 @@ fi
 chown -R 1000:1000 \
   "${MANIFESTARR_DATA_DIR}" \
   "${PLEX_CONFIG_DIR}" \
-  "${PLEX_TRANSCODE_DIR}"
+  "${PLEX_TRANSCODE_DIR}" \
+  "${PLEX_CLAIM_DIR}"
 chown 1000:1000 "${MOUNT_DIR}"
 chmod 0775 "${MOUNT_DIR}"
