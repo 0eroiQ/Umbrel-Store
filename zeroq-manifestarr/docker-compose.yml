@@ -8,7 +8,7 @@ services:
       PROXY_AUTH_ADD: "true"
 
   api:
-    image: ghcr.io/zeroq-bit/manifestarr:0.1.2@sha256:9ad446775c87792e8a9d32f526d9a513e2bcd3db74761c7bd60ddc8090131e08
+    image: ghcr.io/zeroq-bit/manifestarr:0.1.3@sha256:e3994b81d1bc3bea29fe8f898bc6631fe0acd685db5ac6c30017ba1f20f87807
     restart: on-failure
     stop_grace_period: 30s
     command:
@@ -25,10 +25,15 @@ services:
     environment:
       TZ: Etc/UTC
       MANIFESTARR_BUNDLED_PLEX_URL: http://host.docker.internal:32400
+      MANIFESTARR_BUNDLED_PLEX_CLAIM_SOCKET: /run/manifestarr/plex-claim.sock
     extra_hosts:
       - host.docker.internal:host-gateway
     volumes:
       - ${APP_DATA_DIR}/data/manifestarr:/data
+      - ${APP_DATA_DIR}/data/plex/claim:/run/manifestarr
+    depends_on:
+      claim_agent:
+        condition: service_healthy
     healthcheck:
       test:
         - CMD-SHELL
@@ -40,8 +45,38 @@ services:
       retries: 5
       start_period: 15s
 
+  claim_agent:
+    image: ghcr.io/zeroq-bit/manifestarr:0.1.3@sha256:e3994b81d1bc3bea29fe8f898bc6631fe0acd685db5ac6c30017ba1f20f87807
+    restart: on-failure
+    stop_grace_period: 30s
+    network_mode: host
+    command:
+      - uv
+      - run
+      - --no-dev
+      - manifestarr
+      - claim-agent
+      - --socket
+      - /run/manifestarr/plex-claim.sock
+    environment:
+      TZ: Etc/UTC
+    volumes:
+      - ${APP_DATA_DIR}/data/plex/claim:/run/manifestarr
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          /app/.venv/bin/python -c "import httpx;
+          client = httpx.Client(transport=httpx.HTTPTransport(
+          uds='/run/manifestarr/plex-claim.sock'));
+          client.get('http://manifestarr.local/health', timeout=5).raise_for_status()"
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
   mount:
-    image: ghcr.io/zeroq-bit/manifestarr:0.1.2@sha256:9ad446775c87792e8a9d32f526d9a513e2bcd3db74761c7bd60ddc8090131e08
+    image: ghcr.io/zeroq-bit/manifestarr:0.1.3@sha256:e3994b81d1bc3bea29fe8f898bc6631fe0acd685db5ac6c30017ba1f20f87807
     restart: on-failure
     stop_grace_period: 1m
     command:
