@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-manifestarr
 category: media
 name: Manifestarr
-version: "0.1.3"
+version: "0.1.4"
 tagline: A Plex-ready virtual library resolved from Stremio add-ons
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-manifestarr/icon.png
 description: >-
@@ -27,13 +27,14 @@ description: >-
   4. Connect your Stremio-compatible stream add-ons.
   5. Create the Plex movie and TV libraries using
   /downloads/manifestarr/movies and /downloads/manifestarr/shows.
-  6. Add titles through Plex Watchlist or MDBList. Automatic sources resolve
-  one movie at a time and retry provider rate limits later.
+  6. Add titles through Plex Watchlist or MDBList. For a series, select the
+  seasons to sync. Released episodes and movies resolve one at a time and retry
+  provider rate limits later.
 
 
   The Plex service uses host port 32400 for normal Plex client discovery. Stop
   or uninstall any other Plex server on this Umbrel before installing
-  Manifestarr. Series episode expansion remains planned for a later release.
+  Manifestarr.
 developer: ZeroQ
 website: https://github.com/ZeroQ-bit/Manifestarr
 dependencies: []
@@ -49,8 +50,8 @@ permissions:
   - GPU
   - STORAGE_DOWNLOADS
 releaseNotes: >-
-  Adds secure in-app claiming for the Plex server bundled with Manifestarr.
-  Claim codes are sent directly to the local bundled server and are never
-  stored or returned by Manifestarr.
+  Adds selectable TV seasons and episode-by-episode syncing. Released episodes
+  enter the existing one-at-a-time resolver queue, publish with Plex-compatible
+  SxxExx paths, and show per-series progress in Requests.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store/pull/31
