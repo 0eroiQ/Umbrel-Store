@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-manifestarr
 category: media
 name: Manifestarr
-version: "0.1.5"
+version: "0.1.6"
 tagline: A Plex-ready virtual library resolved from Stremio add-ons
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-manifestarr/icon.png
 description: >-
@@ -24,7 +24,8 @@ description: >-
   2. In Manifestarr Settings, open the Plex claim page and paste the short-lived
   claim code into Claim Manifestarr Plex. The code is never saved.
   3. Connect your Plex account and select the Manifestarr server.
-  4. Connect your Stremio-compatible stream add-ons.
+  4. Add a TMDB API Read Access Token for preferred TV season and episode
+  metadata, then connect your Stremio-compatible stream add-ons for playback.
   5. Create the Plex movie and TV libraries using
   /downloads/manifestarr/movies and /downloads/manifestarr/shows.
   6. Add titles through Plex Watchlist or MDBList. For a series, select seasons
@@ -50,8 +51,8 @@ permissions:
   - GPU
   - STORAGE_DOWNLOADS
 releaseNotes: >-
-  Adds TV automation settings to exclude Specials (Season 0) and automatically
-  add every released episode when Plex Watchlist or MDBList syncs. Future
-  episodes are picked up after airing, while the resolver remains one at a time.
+  Uses your configured TMDB key for TV seasons, episodes, artwork, summaries,
+  and air dates while keeping Stremio add-ons for playback. Also fixes the
+  Cinemeta redirect fallback and immediately retries earlier metadata errors.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store/pull/31
