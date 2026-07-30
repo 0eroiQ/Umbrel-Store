@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-manifestarr
 category: media
 name: Manifestarr
-version: "0.1.10"
+version: "0.1.11"
 tagline: A Plex-ready virtual library resolved from Stremio add-ons
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-manifestarr/icon.png
 description: >-
@@ -51,8 +51,11 @@ permissions:
   - GPU
   - STORAGE_DOWNLOADS
 releaseNotes: >-
-  Uses your configured TMDB key for TV seasons, episodes, artwork, summaries,
-  and air dates while keeping Stremio add-ons for playback. Also fixes the
-  Cinemeta redirect fallback and immediately retries earlier metadata errors.
+  Hardens upstream byte-range reads so a slow or transiently flaky Stremio
+  source no longer truncates playback mid-stream. Reads now stream
+  incrementally with an inactivity budget instead of a fixed total timeout,
+  and transient incomplete ranges are retried with backoff before failing
+  closed. Improves reliability for virtual-library playback on the bundled
+  Plex server.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store/pull/31
