@@ -9,7 +9,7 @@ services:
 
   server:
     # Immutable multi-architecture Paper Preview 0.1.0 image.
-    image: ghcr.io/zeroq-bit/polyagent:0.1.0@sha256:0a446a7f3e4d9621f5b86ea1b25e236b318ec9e287fccc851426df78d873971a
+    image: ghcr.io/zeroq-bit/polyagent:0.1.0@sha256:e6ae90585a35ba9b16273bc12367e44b2686d916a73ccbf96befa68ce1d48461
     restart: on-failure
     stop_grace_period: 30s
     user: '1001:1001'
