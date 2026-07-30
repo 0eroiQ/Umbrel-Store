@@ -1,21 +1,25 @@
 manifestVersion: 1.1
 id: zeroq-polyagent
 category: finance
-name: PolyAgent Paper Preview
-version: '0.1.0'
-tagline: BTC 5-minute fixture-backed paper-trading preview
+name: PolyAgent
+version: '1.0.0'
+tagline: Self-hosted Polymarket monitoring & paper trading
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
 description: >-
-  PolyAgent Paper Preview is an early, self-hosted research build containing one
-  fixture-backed BTC 5-minute lane. It replays bundled, versioned market fixtures,
-  evaluates a deterministic reversal strategy, simulates fill-or-kill paper orders
-  against recorded executable depth, and records decisions, fills, and emergency-stop
-  state in an encrypted local database.
+  PolyAgent is a self-hosted, encrypted-at-rest platform that monitors real-time
+  prediction-market order books, evaluates a deterministic reversal strategy, and
+  simulates paper trading at executable depth.
 
+  This v1.0.0 release delivers the paper vertical slice on a complete foundation: a
+  BTC 5-minute lane running end-to-end (fixture-backed by default), with encrypted
+  SQLCipher storage, global risk controls including a persisted emergency-stop, and full
+  decision/fill provenance.
 
-  This 0.1.0 preview does not connect to live market feeds and does not include wallet
-  credentials, authenticated Polymarket order access, a live-order gateway, backtesting,
-  or the eight-lane functionality described by the future PolyAgent v1 contract.
+  Live read-only Polymarket market-data adapters (Gamma/CLOB/WSS) are implemented and
+  fail-closed behind operator eligibility — they can be enabled to stream real books and
+  trades, but place NO orders. Default paper mode is technically incapable of order
+  submission; the optional live-order gateway is off by default and fail-closed. No
+  profitability claim forms part of acceptance.
 developer: ZeroQ
 website: https://github.com/ZeroQ-bit/Umbrel-Store/tree/master/zeroq-polyagent
 dependencies: []
@@ -29,6 +33,11 @@ defaultPassword: ''
 torOnly: false
 permissions: []
 releaseNotes: >-
-  Initial fixture-backed BTC 5-minute paper-trading preview. Live execution is unavailable.
+  v1.0.0 — paper vertical slice on a complete foundation. Encrypted storage,
+  deterministic reversal strategy, executable-depth paper execution, bootstrap-token auth,
+  and fail-closed live-data adapters (read-only, eligibility-gated). Order placement is
+  not wired; the gateway remains a fail-closed skeleton.
+  NOTE: the container image is still the verified 0.1.0 build until the multi-arch 1.0.0
+  image is published; the manifest text is forward-reconciled to match the codebase.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store
