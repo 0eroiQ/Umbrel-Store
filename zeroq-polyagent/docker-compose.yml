@@ -8,8 +8,8 @@ services:
       PROXY_AUTH_ADD: 'true'
 
   server:
-    # Release publication replaces this tag with the immutable multi-architecture digest.
-    image: ghcr.io/zeroq-bit/polyagent:1.0.0
+    # Immutable multi-architecture Paper Preview 0.1.0 image.
+    image: ghcr.io/zeroq-bit/polyagent:0.1.0@sha256:41048f17a409ce56af58992ffb46d7a1fba2e22c882eaead0f7d8591b34e093e
     restart: on-failure
     stop_grace_period: 30s
     user: '1001:1001'
