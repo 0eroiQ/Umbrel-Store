@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="$(readlink -f "$(dirname "${BASH_SOURCE[0]}")/..")"
+DATA_DIR="${APP_DIR}/data"
+SECRETS_DIR="${APP_DIR}/secrets"
+
+umask 077
+mkdir -p "${DATA_DIR}" "${SECRETS_DIR}"
+chmod 0700 "${DATA_DIR}" "${SECRETS_DIR}"
+
+create_secret() {
+  local destination="$1"
+  local bytes="$2"
+  local temporary="${destination}.tmp"
+
+  if [[ -s "${destination}" ]]; then
+    chmod 0600 "${destination}"
+    return
+  fi
+
+  od -An -N "${bytes}" -tx1 /dev/urandom | tr -d ' \n' > "${temporary}"
+  printf '\n' >> "${temporary}"
+  chmod 0600 "${temporary}"
+  mv "${temporary}" "${destination}"
+}
+
+create_secret "${SECRETS_DIR}/db_key" 32
+create_secret "${SECRETS_DIR}/session_secret" 32
+create_secret "${SECRETS_DIR}/bootstrap_token" 24
+
+chown -R 1001:1001 "${DATA_DIR}" "${SECRETS_DIR}"

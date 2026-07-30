@@ -1,0 +1,40 @@
+manifestVersion: 1.1
+id: zeroq-polyagent
+category: finance
+name: PolyAgent
+version: '1.0.0'
+tagline: Self-hosted Polymarket monitoring & paper trading
+icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
+description: >-
+  PolyAgent is a self-hosted, encrypted-at-rest platform that monitors real-time
+  prediction-market order books, evaluates a deterministic reversal strategy, and
+  simulates paper trading at executable depth. This v1.0.0 release delivers the paper
+  vertical slice: one end-to-end BTC 5-minute lane running on a complete foundation.
+
+  It replays bundled, versioned, hash-verified market fixtures; reconciles order books
+  (snapshots, deltas, sequence gaps); applies global risk controls with a persisted
+  emergency-stop requiring deliberate re-arm; and records every decision and paper fill
+  with full provenance (version + hash + human-readable reason trace) in an encrypted
+  SQLCipher database.
+
+  Default paper mode is technically incapable of authenticated order submission. The
+  optional isolated live-order gateway is off by default and fail-closed. No
+  profitability claim forms part of acceptance.
+developer: ZeroQ
+website: https://github.com/ZeroQ-bit/Umbrel-Store/tree/master/zeroq-polyagent
+dependencies: []
+repo: https://github.com/ZeroQ-bit/Umbrel-Store
+support: https://github.com/ZeroQ-bit/Umbrel-Store/issues
+port: 8080
+gallery: []
+path: ''
+defaultUsername: ''
+defaultPassword: ''
+torOnly: false
+permissions: []
+releaseNotes: >-
+  v1.0.0 paper vertical slice — BTC 5m lane end-to-end on a complete foundation.
+  Encrypted storage, deterministic strategies, executable-depth paper execution,
+  bootstrap-token auth, and a fail-closed gateway skeleton.
+submitter: ZeroQ
+submission: https://github.com/ZeroQ-bit/Umbrel-Store
