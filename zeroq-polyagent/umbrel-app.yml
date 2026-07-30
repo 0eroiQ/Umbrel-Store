@@ -21,7 +21,7 @@ website: https://github.com/ZeroQ-bit/Umbrel-Store/tree/master/zeroq-polyagent
 dependencies: []
 repo: https://github.com/ZeroQ-bit/Umbrel-Store
 support: https://github.com/ZeroQ-bit/Umbrel-Store/issues
-port: 8080
+port: 42718
 gallery: []
 path: ''
 defaultUsername: ''
