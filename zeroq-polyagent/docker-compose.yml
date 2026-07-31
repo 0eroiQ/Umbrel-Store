@@ -8,8 +8,8 @@ services:
       PROXY_AUTH_ADD: 'true'
 
   server:
-    # Immutable multi-architecture Paper Preview 0.1.0 image.
-    image: ghcr.io/zeroq-bit/polyagent:0.1.0@sha256:e6ae90585a35ba9b16273bc12367e44b2686d916a73ccbf96befa68ce1d48461
+    # Immutable multi-architecture 1.1.0 image (live-trading code, paper by default).
+    image: ghcr.io/zeroq-bit/polyagent:1.1.0@sha256:17616d92d93afde74216dc33800e11c9284277494e0fcbbe2869f3e8d3268c77
     restart: on-failure
     stop_grace_period: 30s
     user: '1001:1001'

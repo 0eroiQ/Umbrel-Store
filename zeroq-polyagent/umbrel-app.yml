@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-polyagent
 category: finance
 name: PolyAgent
-version: '1.0.0'
+version: '1.1.0'
 tagline: Self-hosted Polymarket monitoring & paper trading
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
 description: >-
@@ -35,11 +35,11 @@ defaultPassword: ''
 torOnly: false
 permissions: []
 releaseNotes: >-
-  v1.0.0 codebase now includes the full live-trading capability stack (live market data,
-  settlement, EIP-712 order signing, armed fail-closed gateway, eligibility probe) — see
-  PR #8 on the source repo. All order-placement code is gateway-only and OFF by default.
-  NOTE: the container image is still the verified 0.1.0 build (paper-only). A 1.1.0+ image
-  including the live-trading code must be built + published before these features are
-  installable; until then the app runs the paper-only 0.1.0 build.
+  v1.1.0 — the container image now ships the full live-trading capability stack:
+  live Polymarket market data (Gamma/CLOB/WSS), authoritative settlement, EIP-712 order
+  signing, an armed fail-closed order gateway (two-step arming, hard-risk ceilings,
+  eligibility probe), and idempotent intent execution. Default mode is still paper and
+  incapable of order submission; all order-placement code is gateway-only and OFF by
+  default. No profitability claim forms part of acceptance.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store
