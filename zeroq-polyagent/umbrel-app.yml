@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-polyagent
 category: finance
 name: PolyAgent
-version: '1.1.0'
+version: '1.2.0'
 tagline: Self-hosted Polymarket monitoring & paper trading
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
 description: >-
