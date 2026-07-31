@@ -8,7 +8,7 @@ services:
       PROXY_AUTH_ADD: "false"
 
   server:
-    image: ghcr.io/zeroq-bit/riven:sha-cd03645@sha256:9b304eedd0c6e00bcdbbefc32e3eba523d2236a40c258055a74a2cd83fb2a07d
+    image: ghcr.io/zeroq-bit/riven:sha-225c9b2@sha256:8545490232ef588baf262191eda4087a0f3a3bd909a7f482b5aa42b34e3a3e0a
     restart: on-failure
     stop_grace_period: 1m
     cap_add:
@@ -100,7 +100,7 @@ services:
         condition: service_healthy
 
   frontend:
-    image: ghcr.io/zeroq-bit/riven-frontend:sha-85c441d@sha256:5b235715e63b01376b376882236a44d071e9225d88fe6b588315cb99cade36c7
+    image: ghcr.io/zeroq-bit/riven-frontend:sha-b97d435@sha256:b680b72a649221ba8583eda5e8d97c9c5db3947df0b89587cf1f173da855fc81
     restart: on-failure
     stop_grace_period: 1m
     user: "1000:1000"
