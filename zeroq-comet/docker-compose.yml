@@ -16,8 +16,10 @@ services:
       FASTAPI_PORT: "8000"
       FASTAPI_WORKERS: "1"
       USE_GUNICORN: "True"
-      # Random admin dashboard password if unset; override via Umbrel env if needed.
-      ADMIN_DASHBOARD_PASSWORD: "${COMET_ADMIN_PASSWORD:-}"
+      # ADMIN_DASHBOARD_PASSWORD intentionally unset: Comet auto-generates a
+      # random secret when the env var is absent. Setting it to an empty string
+      # fails Comet's validator, so we must not define it here. To use a fixed
+      # password, pass a non-empty COMET_ADMIN_PASSWORD via the Umbrel app env.
       TZ: Etc/UTC
     volumes:
       - ${APP_DATA_DIR}/data:/app/data
