@@ -1,0 +1,54 @@
+manifestVersion: 1.1
+id: zeroq-comet
+name: Comet
+tagline: Self-hosted Stremio debrid addon and Riven scraper
+icon: https://raw.githubusercontent.com/g0ldyy/comet/main/docs/imgs/comet.png
+category: media
+version: "v1.0.0"
+port: 8000
+description: >-
+  Comet is Stremio's fastest torrent/debrid/usenet search add-on, packaged here
+  as a self-hosted Umbrel app so you control your own instance instead of
+  relying on a shared public one.
+
+
+  A self-hosted Comet is the recommended scraper source for Riven when you use
+  a debrid provider like Premiumize: Riven scrapes your Comet instance for
+  cached torrent infohashes and resolves them through your debrid account,
+  avoiding the rate limits and policy blocks that affect shared Comet hosts.
+
+
+  SET-UP INSTRUCTIONS
+
+
+  1. Install Comet and open the web UI.
+
+  2. On the /configure page, add your indexer(s) (Jackett, Prowlarr, or Zilean)
+  and your debrid service (e.g. Premiumize) with its API key.
+
+  3. Save the configuration and copy the generated manifest URL. It looks like
+  http://<umbrel-ip>:8000/<config>/manifest.json.
+
+  4. In Riven, go to Settings -> Scraping -> Comet and paste the manifest URL.
+  Disable any shared/Elfhosted Comet instance.
+
+  5. Riven will now scrape your private Comet instance and resolve streams via
+  your debrid provider.
+
+
+  Comet stores its database and configuration under the app data directory, so
+  your settings survive restarts.
+developer: g0ldyy
+website: https://github.com/g0ldyy/comet
+submitter: ZeroQ
+submission: https://github.com/ZeroQ-bit/Umbrel-Store
+repo: https://github.com/g0ldyy/comet
+support: https://github.com/g0ldyy/comet/issues
+gallery: []
+releaseNotes: >-
+  Initial Umbrel packaging of Comet (g0ldyy/comet) as a self-hosted Stremio
+  debrid addon and Riven scraper. Pinned to the upstream latest image.
+dependencies: []
+path: ""
+permissions:
+  - STORAGE_DOWNLOADS

@@ -1,0 +1,33 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: zeroq-comet_server_1
+      APP_PORT: 8000
+      PROXY_AUTH_ADD: "false"
+
+  server:
+    image: g0ldyy/comet:latest@sha256:dca62133336e02784d02aaad861381820674d1c8e3e98a03797610b81ee4defe
+    restart: on-failure
+    stop_grace_period: 30s
+    environment:
+      FASTAPI_HOST: "0.0.0.0"
+      FASTAPI_PORT: "8000"
+      FASTAPI_WORKERS: "1"
+      USE_GUNICORN: "True"
+      # Random admin dashboard password if unset; override via Umbrel env if needed.
+      ADMIN_DASHBOARD_PASSWORD: "${COMET_ADMIN_PASSWORD:-}"
+      TZ: Etc/UTC
+    volumes:
+      - ${APP_DATA_DIR}/data:/app/data
+    networks:
+      default:
+        aliases:
+          - zeroq-comet-server
+    healthcheck:
+      test: ["CMD-SHELL", "python -m comet.healthcheck || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
