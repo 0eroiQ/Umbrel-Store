@@ -4,7 +4,7 @@ name: Comet
 tagline: Self-hosted Stremio debrid addon and Riven scraper
 icon: https://raw.githubusercontent.com/g0ldyy/comet/main/docs/imgs/comet.png
 category: media
-version: "v1.0.0"
+version: "v1.0.1"
 port: 8000
 description: >-
   Comet is Stremio's fastest torrent/debrid/usenet search add-on, packaged here
