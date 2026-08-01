@@ -1,0 +1,59 @@
+manifestVersion: 1.1
+id: zeroq-torrentio
+name: Torrentio (Knightcrawler)
+tagline: Self-hosted torrent scraper for Riven and Stremio
+icon: https://raw.githubusercontent.com/sleeyax/torrentio-scraper-sh/master/.github/torrentio-logo.png
+category: media
+version: "v1.0.0"
+port: 7000
+description: >-
+  A self-hosted instance of the Torrentio scraper (the Knightcrawler backend by
+  sleeyax/torrentio-scraper-sh) that finds torrents and exposes them as a
+  Stremio-compatible addon. Riven can scrape this instance to feed your debrid
+  provider (e.g. Premiumize) with cached torrent infohashes.
+
+
+  This is the independent, rate-limit-free alternative to shared Comet
+  instances: it scrapes torrent sources directly and stores results in its own
+  Postgres/MongoDB/RabbitMQ stack, so large libraries won't choke a shared
+  host.
+
+
+  The scrapers are curated for networks where some torrent sites are
+  ISP-blocked: eztv and the DebridMediaManager GitHub hash lists are enabled;
+  TPB/YTS/TorrentGalaxy are disabled (re-enable them in the producer config if
+  your network allows them).
+
+
+  SET-UP INSTRUCTIONS
+
+
+  1. Install Torrentio and wait for the initial scrape to populate (this takes
+  a few hours on first run; the addon serves partial results as they arrive).
+
+  2. The addon manifest is at http://<umbrel-ip>:7000/manifest.json.
+
+  3. In Riven, go to Settings -> Scraping -> Comet and set the URL to
+  http://zeroq-torrentio-addon:7000/<config>/manifest.json (or the bare addon
+  URL if Riven scrapes it directly). Ask for the exact URL if unsure.
+
+  4. Optional: add a GitHub Personal Access Token to the producer env
+  (GithubSettings__PAT) to raise rate limits when ingesting DMM hash lists.
+
+
+  Data (Postgres, MongoDB, RabbitMQ) is persisted under the app data directory.
+developer: sleeyax
+website: https://github.com/sleeyax/torrentio-scraper-sh
+submitter: ZeroQ
+submission: https://github.com/ZeroQ-bit/Umbrel-Store
+repo: https://github.com/ZeroQ-bit/torrentio-scraper-sh
+support: https://github.com/sleeyax/torrentio-scraper-sh/issues
+gallery: []
+releaseNotes: >-
+  Initial Umbrel packaging of the Torrentio/Knightcrawler scraper as a
+  self-hosted Stremio addon and Riven scraper. Pinned to ZeroQ-bit fork images
+  (sha-967c903) with curated scrapers (eztv + DMM enabled, blocked sites off).
+dependencies: []
+path: ""
+permissions:
+  - STORAGE_DOWNLOADS
