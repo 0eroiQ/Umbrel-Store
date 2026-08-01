@@ -1,0 +1,152 @@
+version: "3.8"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: zeroq-torrentio_addon_1
+      APP_PORT: 7000
+      PROXY_AUTH_ADD: "false"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: on-failure
+    stop_grace_period: 30s
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: knightcrawler
+      PGUSER: postgres
+    volumes:
+      - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  mongodb:
+    image: mongo:7
+    restart: on-failure
+    stop_grace_period: 30s
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+    volumes:
+      - ${APP_DATA_DIR}/data/mongo:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok' | grep -q 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: on-failure
+    stop_grace_period: 30s
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - ${APP_DATA_DIR}/data/rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  producer:
+    image: ghcr.io/zeroq-bit/knightcrawler-producer:sha-967c903@sha256:6afcaf8718a255bc52c9a83619deb1b54bd0fa98d53f5bba8c44db764e8c059c
+    restart: on-failure
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      TZ: Etc/UTC
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: knightcrawler
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: "27017"
+      MONGODB_DB: knightcrawler
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+      RabbitMqConfiguration__Host: rabbitmq
+      RabbitMqConfiguration__QueueName: ingested
+      RabbitMqConfiguration__Username: guest
+      RabbitMqConfiguration__Password: guest
+      RabbitMqConfiguration__Durable: "true"
+      RabbitMqConfiguration__MaxQueueSize: "0"
+      RabbitMqConfiguration__MaxPublishBatchSize: "500"
+      RabbitMqConfiguration__PublishIntervalInSeconds: "10"
+      # Optional: raise DMM ingestion rate limits by adding a GitHub PAT here.
+      GithubSettings__PAT: "${TORRENTIO_GITHUB_PAT:-}"
+
+  consumer:
+    image: ghcr.io/zeroq-bit/knightcrawler-consumer:sha-967c903@sha256:0c9704c219c8c1da64153060e79930487784ebda6ef031e66d3d0fd14f573ab8
+    restart: on-failure
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      TZ: Etc/UTC
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: knightcrawler
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: "27017"
+      MONGODB_DB: knightcrawler
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+      RABBIT_URI: amqp://guest:guest@rabbitmq:5672/?heartbeat=30
+      QUEUE_NAME: ingested
+      JOB_CONCURRENCY: "5"
+      JOBS_ENABLED: "true"
+      MAX_SINGLE_TORRENT_CONNECTIONS: "10"
+      TORRENT_TIMEOUT: "30000"
+      UDP_TRACKERS_ENABLED: "true"
+
+  addon:
+    image: ghcr.io/zeroq-bit/knightcrawler-addon:sha-967c903@sha256:b7e17243bf4e203cdcb445a8e4e917c3800a9ad6f392c68f5976572350bd2f99
+    restart: on-failure
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      TZ: Etc/UTC
+      DEBUG_MODE: "false"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: knightcrawler
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: "27017"
+      MONGODB_DB: knightcrawler
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+    networks:
+      default:
+        aliases:
+          - zeroq-torrentio-addon
