@@ -15,9 +15,11 @@ services:
         condition: service_healthy
     environment:
       TZ: Etc/UTC
-      Zilean__Database__ConnectionString: "Host=zeroq-zilean-postgres;Port=5432;Database=zilean;Username=postgres;Password=postgres"
+      # NOTE: do NOT set Zilean__Database__ConnectionString here.
+      # Zilean auto-generates /app/data/settings.json on first run with the
+      # correct "Host=postgres" (the Docker Compose service name). Overriding
+      # it via env would use the wrong hostname (container_name prefix).
       # Batched import: designed for low-RAM systems (the box has ~8GB total).
-      # Trades ingestion speed for lower peak memory usage.
       Zilean__Dmm__ImportBatched: "true"
     volumes:
       - ${APP_DATA_DIR}/data/zilean:/app/data
