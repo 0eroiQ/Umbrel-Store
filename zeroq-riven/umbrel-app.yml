@@ -4,7 +4,7 @@ name: Riven
 tagline: Debrid-powered media manager for Plex and Jellyfin
 icon: https://avatars.githubusercontent.com/u/172203452?v=4
 category: media
-version: "v0.23.6-41"
+version: "v0.23.6-42"
 port: 8080
 description: >-
   Riven builds a virtual media library from your configured Debrid and media manager services, then exposes it as a browsable filesystem for apps like Plex.
@@ -33,7 +33,7 @@ repo: https://github.com/rivenmedia/riven
 support: https://github.com/rivenmedia/riven/issues
 gallery: []
 releaseNotes: >-
-  Adds Premiumize as a first-class debrid provider (alongside Real-Debrid, AllDebrid, Debrid-Link, and TorBox). Enable it and paste your API key under Settings → Downloaders. This build also keeps the earlier MDBList resilient-import fix.
+  Adds Premiumize as a first-class debrid provider (alongside Real-Debrid, AllDebrid, Debrid-Link, and TorBox). Enable it and paste your API key under Settings → Downloaders. The Comet scraper now also excludes HDR / Dolby Vision streams on the Riven side (Comet's UI has no HDR-exclude control). This build keeps the earlier MDBList resilient-import fix.
 dependencies: []
 path: ""
 defaultUsername: "riven"
