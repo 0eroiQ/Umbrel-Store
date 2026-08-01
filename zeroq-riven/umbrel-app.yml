@@ -4,7 +4,7 @@ name: Riven
 tagline: Debrid-powered media manager for Plex and Jellyfin
 icon: https://avatars.githubusercontent.com/u/172203452?v=4
 category: media
-version: "v0.23.6-43"
+version: "v0.23.6-44"
 port: 8080
 description: >-
   Riven builds a virtual media library from your configured Debrid and media manager services, then exposes it as a browsable filesystem for apps like Plex.
