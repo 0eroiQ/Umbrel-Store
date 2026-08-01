@@ -1,0 +1,61 @@
+manifestVersion: 1.1
+id: zeroq-zilean
+name: Zilean
+tagline: Self-hosted DMM scraper for Riven — no Cloudflare, no rate limits
+icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-zilean/icon.svg
+category: media
+version: "v1.0.0"
+port: 8181
+description: >-
+  Zilean is a self-hosted service that indexes DebridMediaManager (DMM)
+  community-shared hash lists and exposes them as a searchable API. Unlike
+  public Torrentio, Zilean runs entirely on your box — no Cloudflare blocks,
+  no rate limits, no circuit breaker trips.
+
+
+  Riven has native Zilean support: point it at
+  http://zeroq-zilean_server_1:8181 (or http://<umbrel-ip>:8181) and it will
+  find cached debrid streams for your entire library.
+
+
+  HOW IT WORKS
+
+
+  On first start, Zilean scrapes the full DMM hashlist archive from GitHub
+  (takes ~1 hour, uses 4-6 GB RAM with batched import enabled). After that it
+  refreshes hourly. The DMM lists contain community-curated cached torrents
+  that debrid providers (AllDebrid, Real-Debrid) can serve instantly.
+
+
+  SET-UP INSTRUCTIONS
+
+
+  1. Install Zilean and wait for the initial DMM index to build (~1 hour).
+     The web UI at http://<umbrel-ip>:8181 shows indexing progress.
+
+  2. In Riven, go to Settings -> Scraping -> Zilean and set the URL to
+     http://zeroq-zilean_server_1:8181 (or http://192.168.1.43:8181).
+
+  3. Enable Zilean and disable Torrentio (public Torrentio gets Cloudflare-
+     blocked when Riven scrapes at high speed).
+
+  4. Restart Riven — it will start finding streams immediately.
+
+
+  Data (Postgres + Zilean index) is persisted under the app data directory.
+developer: iPromKnight
+website: https://github.com/iPromKnight/zilean
+submitter: ZeroQ
+submission: https://github.com/ZeroQ-bit/Umbrel-Store
+repo: https://github.com/iPromKnight/zilean
+support: https://github.com/iPromKnight/zilean/issues
+gallery: []
+releaseNotes: >-
+  Initial packaging of Zilean as a self-hosted DMM scraper for Riven.
+  Batched import enabled for low-RAM systems. Paired with AllDebrid for
+  unlimited cloud storage — no deletion, no "space full" errors.
+dependencies:
+  - zeroq-riven
+path: ""
+permissions:
+  - STORAGE_DOWNLOADS

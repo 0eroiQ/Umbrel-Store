@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1d2e"/>
+      <stop offset="100%" stop-color="#0d0f1a"/>
+    </linearGradient>
+    <linearGradient id="magnet" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e74c3c"/>
+      <stop offset="100%" stop-color="#c0392b"/>
+    </linearGradient>
+    <linearGradient id="search" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3498db"/>
+      <stop offset="100%" stop-color="#2980b9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded background -->
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+
+  <!-- Database/stack cylinder (DMM indexed data) -->
+  <g transform="translate(128, 130)">
+    <!-- Bottom layer -->
+    <ellipse cx="0" cy="35" rx="60" ry="14" fill="#2a2d3e" stroke="#4a5070" stroke-width="2"/>
+    <path d="M -60,35 L -60,15 A 60,14 0 0,0 60,15 L 60,35" fill="#3a3d4e" stroke="#4a5070" stroke-width="2"/>
+    <ellipse cx="0" cy="15" rx="60" ry="14" fill="#4a5070" opacity="0.6"/>
+
+    <!-- Middle layer -->
+    <ellipse cx="0" cy="0" rx="60" ry="14" fill="#2a2d3e" stroke="#4a5070" stroke-width="2"/>
+    <path d="M -60,0 L -60,-20 A 60,14 0 0,0 60,-20 L 60,0" fill="#3a3d4e" stroke="#4a5070" stroke-width="2"/>
+    <ellipse cx="0" cy="-20" rx="60" ry="14" fill="#4a5070" opacity="0.6"/>
+
+    <!-- Top layer -->
+    <ellipse cx="0" cy="-35" rx="60" ry="14" fill="#2a2d3e" stroke="#5a6080" stroke-width="2"/>
+    <ellipse cx="0" cy="-35" rx="60" ry="14" fill="#5a6080" opacity="0.4"/>
+  </g>
+
+  <!-- Search magnifier overlay -->
+  <g transform="translate(180, 70)">
+    <circle cx="0" cy="0" r="26" fill="none" stroke="url(#search)" stroke-width="6"/>
+    <line x1="18" y1="18" x2="34" y2="34" stroke="url(#search)" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <!-- Small magnet/hash indicator (top-left) -->
+  <g transform="translate(55, 60)">
+    <!-- U-shaped magnet -->
+    <path d="M 0,0 L 0,22 A 14,14 0 0,0 28,22 L 28,0" fill="none" stroke="url(#magnet)" stroke-width="6" stroke-linecap="round"/>
+    <rect x="-2" y="-2" width="10" height="8" rx="2" fill="#e74c3c"/>
+    <rect x="20" y="-2" width="10" height="8" rx="2" fill="#ecf0f1"/>
+  </g>
+</svg>
