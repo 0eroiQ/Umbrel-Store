@@ -1,9 +1,9 @@
 manifestVersion: 1.1
 id: zeroq-polyagent
 category: finance
-name: PolyAgent
-version: '1.5.1'
-tagline: Self-hosted Polymarket monitoring & paper trading
+name: CryptoAgent
+version: '2.0.0'
+tagline: Self-hosted AI crypto trading bot — 6 bots, adaptive learning, Binance
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
 description: >-
   PolyAgent is a self-hosted, encrypted-at-rest platform that monitors real-time
