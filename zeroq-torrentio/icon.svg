@@ -1,0 +1,20 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6d28d9"/>
+      <stop offset="1" stop-color="#4338ca"/>
+    </linearGradient>
+    <linearGradient id="magnet" x1="80" y1="60" x2="176" y2="200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#c7d2fe"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <!-- horseshoe magnet shape -->
+  <path d="M88 70 a40 40 0 0 1 80 0 v60 h-28 V70 a12 12 0 0 0 -24 0 v60 H88 Z" fill="url(#magnet)"/>
+  <rect x="88" y="130" width="28" height="22" rx="4" fill="#f87171"/>
+  <rect x="140" y="130" width="28" height="22" rx="4" fill="#f87171"/>
+  <!-- torrent/stream waves -->
+  <path d="M64 180 q32 -14 64 0 t64 0" stroke="#a5b4fc" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M72 202 q24 -11 48 0 t48 0 t16 0" stroke="#818cf8" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.7"/>
+</svg>

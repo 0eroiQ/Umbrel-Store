@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-torrentio
 name: Torrentio (Knightcrawler)
 tagline: Self-hosted torrent scraper for Riven and Stremio
-icon: https://raw.githubusercontent.com/sleeyax/torrentio-scraper-sh/master/.github/torrentio-logo.png
+icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-torrentio/icon.svg
 category: media
 version: "v1.0.0"
 port: 7000
