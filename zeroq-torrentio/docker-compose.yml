@@ -58,7 +58,7 @@ services:
       start_period: 20s
 
   producer:
-    image: ghcr.io/zeroq-bit/knightcrawler-producer:sha-967c903@sha256:6afcaf8718a255bc52c9a83619deb1b54bd0fa98d53f5bba8c44db764e8c059c
+    image: ghcr.io/zeroq-bit/knightcrawler-producer:sha-fd6c114@sha256:0bad87167141122ac0c13b457e7ab9e50418f915efadf906579d071923b7d988
     restart: on-failure
     stop_grace_period: 30s
     depends_on:
@@ -116,7 +116,11 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: mongo
       RABBIT_URI: amqp://guest:guest@rabbitmq:5672/?heartbeat=30
       QUEUE_NAME: ingested
-      JOB_CONCURRENCY: "5"
+      # Raised from the default 5: the consumer resolves IMDb metadata per
+      # torrent (slow external lookups), so a single container at concurrency 5
+      # can't keep up with DMM ingestion (16k+ torrents). The box has 8 cores /
+      # 5GB free, so 20 parallel jobs materially speeds up the initial scrape.
+      JOB_CONCURRENCY: "20"
       JOBS_ENABLED: "true"
       MAX_SINGLE_TORRENT_CONNECTIONS: "10"
       TORRENT_TIMEOUT: "30000"
@@ -138,12 +142,19 @@ services:
       DEBUG_MODE: "false"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
-      POSTGRES_USER: postgres
+      # The addon (Node/Sequelize) reads POSTGRES_DATABASE / POSTGRES_USERNAME,
+      # NOT POSTGRES_DB / POSTGRES_USER (those are the producer/consumer names).
+      # Without these it defaults the DB to "selfhostio" (which doesn't exist).
+      POSTGRES_DATABASE: knightcrawler
+      POSTGRES_USERNAME: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: knightcrawler
       MONGODB_HOST: mongodb
       MONGODB_PORT: "27017"
       MONGODB_DB: knightcrawler
+      # Must match the consumer's collection (its default is
+      # knightcrawler_consumer_collection; the addon defaults to
+      # selfhostio_consumer_collection without this).
+      MONGODB_COLLECTION: knightcrawler_consumer_collection
       MONGO_INITDB_ROOT_USERNAME: mongo
       MONGO_INITDB_ROOT_PASSWORD: mongo
     networks:
