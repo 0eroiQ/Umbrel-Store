@@ -127,7 +127,7 @@ services:
       UDP_TRACKERS_ENABLED: "true"
 
   addon:
-    image: ghcr.io/zeroq-bit/knightcrawler-addon:sha-967c903@sha256:b7e17243bf4e203cdcb445a8e4e917c3800a9ad6f392c68f5976572350bd2f99
+    image: ghcr.io/zeroq-bit/knightcrawler-addon:sha-848a4bd@sha256:d8462ea502b540b59c8fe210ec3d6a3b72894af1ca1bc15be9daa050311fd534
     restart: on-failure
     stop_grace_period: 30s
     depends_on:

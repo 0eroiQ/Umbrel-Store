@@ -4,7 +4,7 @@ name: Torrentio (Knightcrawler)
 tagline: Self-hosted torrent scraper for Riven and Stremio
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-torrentio/icon.svg
 category: media
-version: "v1.0.0"
+version: "v1.0.1"
 port: 7000
 description: >-
   A self-hosted instance of the Torrentio scraper (the Knightcrawler backend by
