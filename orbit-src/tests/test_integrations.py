@@ -70,10 +70,12 @@ class IntegrationTests(unittest.TestCase):
             "Metadata": [
                 {
                     "type": "movie", "title": "Dune", "year": 2021,
+                    "guid": "plex://movie/5d7768256f4521001e739c01",
                     "Guid": [{"id": "tmdb://438631"}, {"id": "imdb://tt1160419"}],
                 },
                 {
                     "type": "show", "title": "Severance", "year": 2022,
+                    "ratingKey": "5e163c1d98f1f1003e3e4892",
                     "Guid": [{"id": "tmdb://95396"}],
                 },
             ],
@@ -84,6 +86,8 @@ class IntegrationTests(unittest.TestCase):
             [(item["media_type"], item["tmdb_id"]) for item in items],
             [("movie", 438631), ("show", 95396)],
         )
+        self.assertEqual(items[0]["plex_guid"], "plex://movie/5d7768256f4521001e739c01")
+        self.assertEqual(items[1]["plex_guid"], "plex://show/5e163c1d98f1f1003e3e4892")
         self.assertEqual(request.call_args.args[1]["X-Plex-Token"], "plex-token")
         self.assertEqual(request.call_args.args[1]["X-Plex-Version"], __version__)
         parsed = integrations.urllib.parse.urlparse(request.call_args.args[0])

@@ -54,6 +54,7 @@ class Store:
                     year INTEGER,
                     tmdb_id INTEGER,
                     imdb_id TEXT,
+                    plex_guid TEXT NOT NULL DEFAULT '',
                     poster_path TEXT,
                     overview TEXT,
                     source TEXT NOT NULL DEFAULT 'manual',
@@ -125,6 +126,13 @@ class Store:
                 db.execute(
                     "ALTER TABLE plex_library ADD COLUMN seasons_json TEXT NOT NULL DEFAULT '[]'"
                 )
+            request_columns = {
+                row["name"] for row in db.execute("PRAGMA table_info(requests)").fetchall()
+            }
+            if "plex_guid" not in request_columns:
+                db.execute(
+                    "ALTER TABLE requests ADD COLUMN plex_guid TEXT NOT NULL DEFAULT ''"
+                )
 
     def get_settings(self, reveal_secrets: bool = False) -> dict:
         with self.connection() as db:
@@ -165,16 +173,26 @@ class Store:
                 (media_key,),
             ).fetchone()
             if existing:
+                plex_guid = str(item.get("plex_guid") or "")
+                if plex_guid and not existing["plex_guid"]:
+                    db.execute(
+                        "UPDATE requests SET plex_guid=?, updated_at=? WHERE id=?",
+                        (plex_guid, now, existing["id"]),
+                    )
+                    existing = db.execute(
+                        "SELECT * FROM requests WHERE id=?", (existing["id"],)
+                    ).fetchone()
                 return dict(existing), False
             cursor = db.execute(
                 """INSERT INTO requests
                    (media_key, media_type, title, year, tmdb_id, imdb_id,
-                    poster_path, overview, source, source_ref, profile,
-                    created_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    plex_guid, poster_path, overview, source, source_ref,
+                    profile, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     media_key, media_type, item.get("title") or item.get("name") or "Unknown",
                     item.get("year"), tmdb_id, imdb_id,
+                    item.get("plex_guid") or "",
                     item.get("poster_path") or "", item.get("overview") or "",
                     source, source_ref, item.get("profile") or "best", now, now,
                 ),
@@ -751,7 +769,7 @@ class Store:
         """Atomically expose one request to the acquisition worker."""
         payload = {key: request.get(key) for key in (
             "id", "media_type", "title", "year", "tmdb_id", "imdb_id", "profile",
-            "source", "source_ref",
+            "plex_guid", "source", "source_ref",
         )}
         os.makedirs(os.path.dirname(path), exist_ok=True)
         temporary = path + ".tmp"

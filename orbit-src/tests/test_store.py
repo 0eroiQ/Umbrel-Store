@@ -30,6 +30,27 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(first["id"], second["id"])
         self.assertEqual(len(self.store.list_requests()), 1)
 
+    def test_existing_watchlist_request_receives_plex_cloud_guid_for_retry(self):
+        item = {
+            "media_type": "show", "title": "Foundation",
+            "tmdb_id": 93740, "year": 2021,
+        }
+        first, created = self.store.add_request(
+            item, source="plex-watchlist", source_ref="plex-account"
+        )
+        enriched, duplicated = self.store.add_request({
+            **item, "plex_guid": "plex://show/show-key",
+        }, source="plex-watchlist", source_ref="plex-account")
+        self.assertTrue(created)
+        self.assertFalse(duplicated)
+        self.assertEqual(first["id"], enriched["id"])
+        self.assertEqual(enriched["plex_guid"], "plex://show/show-key")
+        with tempfile.TemporaryDirectory() as output:
+            path = os.path.join(output, "request.json")
+            self.store.export_worker_request(enriched, path)
+            with open(path, encoding="utf-8") as handle:
+                self.assertIn('"plex_guid": "plex://show/show-key"', handle.read())
+
     def test_transition_records_visible_timeline(self):
         item, _ = self.store.add_request({"media_type": "show", "title": "Foundation", "tmdb_id": 93740})
         self.store.transition(item["id"], "searching", "Finding a cached release")
