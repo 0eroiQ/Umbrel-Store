@@ -714,8 +714,8 @@ $("#sync-plex-watchlist").addEventListener("click", async event => {
       method: "POST",
       body: "{}",
     });
-    message.textContent = `${result.added} added · ${result.skipped_existing} already in Plex · ${result.skipped_requested} already in Orbit`;
-    toast(`Plex Watchlist synced: ${result.added} new`);
+    message.textContent = `${result.added} added · ${result.retried || 0} retried · ${result.skipped_existing} already in Plex · ${result.skipped_requested} already active in Orbit`;
+    toast(`Plex Watchlist synced: ${result.added} new · ${result.retried || 0} retried`);
     loadDashboard();
   } catch (error) {
     message.textContent = error.message;

@@ -118,12 +118,72 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(result, {
             "found": 3,
             "added": 1,
+            "retried": 0,
             "skipped_existing": 1,
             "skipped_requested": 1,
         })
         arrival = next(item for item in self.store.list_requests() if item["title"] == "Arrival")
         self.assertEqual(arrival["source"], "plex-watchlist")
         self.assertEqual(arrival["profile"], "1080p")
+
+    def test_manual_watchlist_sync_retries_failure_without_duplicating_active_retry(self):
+        watchlist = [{
+            "media_type": "movie", "title": "Arrival", "year": 2016,
+            "tmdb_id": 329865,
+        }]
+        request, _ = self.store.add_request(
+            watchlist[0], source="plex-watchlist", source_ref="plex-account"
+        )
+        self.store.transition(
+            request["id"], "needs_attention",
+            "The configured media library could not be read",
+        )
+        coordinator = Coordinator(self.store, self.temp.name)
+        settings = {
+            "plex_watchlist_enabled": "true",
+            "plex_watchlist_max_items": "100",
+            "plex_watchlist_profile": "4k",
+            "plex_token": "token",
+        }
+
+        with patch("orbit.worker.fetch_plex_watchlist", return_value=watchlist):
+            scheduled = coordinator.sync_plex_watchlist(settings)
+            manual = coordinator.sync_plex_watchlist(settings, retry_failed=True)
+            repeated = coordinator.sync_plex_watchlist(settings, retry_failed=True)
+
+        self.assertEqual(scheduled["retried"], 0)
+        self.assertEqual(scheduled["skipped_requested"], 1)
+        self.assertEqual(manual["retried"], 1)
+        self.assertEqual(manual["skipped_requested"], 0)
+        self.assertEqual(repeated["retried"], 0)
+        self.assertEqual(repeated["skipped_requested"], 1)
+        current = self.store.list_requests()[0]
+        self.assertEqual(current["status"], "queued")
+        self.assertEqual(current["profile"], "4k")
+        self.assertEqual(
+            [event["state"] for event in self.store.events(request["id"])],
+            ["queued", "needs_attention", "queued"],
+        )
+
+    def test_manual_watchlist_sync_does_not_retry_another_source(self):
+        watchlist = [{
+            "media_type": "show", "title": "Severance", "year": 2022,
+            "tmdb_id": 95396,
+        }]
+        request, _ = self.store.add_request(watchlist[0], source="manual")
+        self.store.transition(request["id"], "needs_attention", "No cached release")
+        coordinator = Coordinator(self.store, self.temp.name)
+        with patch("orbit.worker.fetch_plex_watchlist", return_value=watchlist):
+            result = coordinator.sync_plex_watchlist({
+                "plex_watchlist_enabled": "true",
+                "plex_watchlist_max_items": "100",
+                "plex_watchlist_profile": "best",
+                "plex_token": "token",
+            }, retry_failed=True)
+
+        self.assertEqual(result["retried"], 0)
+        self.assertEqual(result["skipped_requested"], 1)
+        self.assertEqual(self.store.list_requests()[0]["status"], "needs_attention")
 
     def test_stream_protection_queues_missing_movie_without_scanning_offline_path(self):
         missing = os.path.join(self.temp.name, "Movies", "Missing.mkv")
