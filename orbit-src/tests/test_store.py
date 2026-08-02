@@ -140,16 +140,40 @@ class StoreTests(unittest.TestCase):
                 pass
         coordinator = Coordinator(self.store, self.temp.name)
 
-        def refresh(paths):
-            return [] if paths[0][0] == "movie" else [{"section_id": "2"}]
+        def refresh(paths, _settings=None):
+            kind, folder = paths[0]
+            section = "1" if kind == "movie" else "2"
+            return [{"section_id": section, "path": folder}]
 
         with patch.dict(os.environ, {"ORBIT_MOVIES_DIR": movies, "ORBIT_TV_DIR": television}), \
-                patch.object(coordinator, "refresh_plex_paths_if_healthy", side_effect=refresh):
+                patch.object(coordinator, "refresh_plex_paths_if_healthy", side_effect=refresh), \
+                patch("orbit.worker.cataloged_plex_paths", return_value={("2", silo)}):
             completed = coordinator.scan_pending_library_paths()
 
         self.assertEqual(completed, [("show", silo)])
         self.assertTrue(os.path.isfile(os.path.join(dune, ".plex-scan-pending")))
         self.assertFalse(os.path.exists(os.path.join(silo, ".plex-scan-pending")))
+
+    def test_accepted_plex_scan_stays_pending_until_catalog_evidence(self):
+        movies = os.path.join(self.temp.name, "Movies")
+        television = os.path.join(self.temp.name, "TV")
+        cabin = os.path.join(movies, "Cabin Fever (2003) {tmdb-11547}")
+        os.makedirs(cabin)
+        os.makedirs(television)
+        marker = os.path.join(cabin, ".plex-scan-pending")
+        with open(marker, "w", encoding="utf-8"):
+            pass
+        coordinator = Coordinator(self.store, self.temp.name)
+        with patch.dict(os.environ, {
+            "ORBIT_MOVIES_DIR": movies, "ORBIT_TV_DIR": television,
+        }), patch.object(
+            coordinator, "refresh_plex_paths_if_healthy", return_value=[{
+                "section_id": "1", "path": cabin,
+            }],
+        ), patch("orbit.worker.cataloged_plex_paths", return_value=set()):
+            completed = coordinator.scan_pending_library_paths()
+        self.assertEqual(completed, [])
+        self.assertTrue(os.path.isfile(marker))
 
     def test_media_handoffs_run_before_next_watchlist_acquisition(self):
         coordinator = Coordinator(self.store, self.temp.name)

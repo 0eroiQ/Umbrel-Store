@@ -16,7 +16,12 @@ from datetime import datetime, timezone
 from .integrations import IntegrationError, fetch_list, fetch_plex_watchlist
 from .link_repair import repair_broken_symlinks
 from .mount_reconcile import reconcile_mounted_sources
-from .plex import plex_library_sections, refresh_plex_paths, scan_plex_library
+from .plex import (
+    cataloged_plex_paths,
+    plex_library_sections,
+    refresh_plex_paths,
+    scan_plex_library,
+)
 from .store import Store
 
 
@@ -220,8 +225,30 @@ class Coordinator:
 
     def scan_pending_library_paths(self) -> list[tuple[str, str]]:
         completed = []
+        settings = self.store.get_settings(reveal_secrets=True)
         for media_type, folder in self.pending_library_scan_paths():
-            if not self.refresh_plex_paths_if_healthy([(media_type, folder)]):
+            refreshed = self.refresh_plex_paths_if_healthy(
+                [(media_type, folder)], settings
+            )
+            if not refreshed:
+                continue
+            section_paths = [
+                (item["section_id"], item["path"])
+                for item in refreshed
+                if item.get("section_id") and item.get("path")
+            ]
+            try:
+                visible = cataloged_plex_paths(
+                    settings.get("plex_url", ""),
+                    settings.get("plex_token", ""),
+                    section_paths,
+                )
+            except IntegrationError:
+                continue
+            if not visible.intersection(section_paths):
+                # HTTP 200 only means Plex accepted the refresh request. Keep
+                # the durable marker until the catalog exposes a media part so
+                # scans dropped while Plex is busy are retried automatically.
                 continue
             marker = os.path.join(folder, ".plex-scan-pending")
             try:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import urllib.error
 import urllib.parse
@@ -376,6 +377,51 @@ def refresh_plex_paths(
         )
         refreshed.append({"section_id": pair[0], "path": pair[1]})
     return refreshed
+
+
+def cataloged_plex_paths(
+    base_url: str,
+    token: str,
+    section_paths: list[tuple[str, str]],
+) -> set[tuple[str, str]]:
+    """Return requested folders for which Plex exposes a cataloged media part."""
+    requested = {
+        (str(section_id), os.path.abspath(str(folder_path)))
+        for section_id, folder_path in section_paths
+        if section_id and folder_path
+    }
+    cataloged = set()
+    for section_id in sorted({pair[0] for pair in requested}):
+        roots = [
+            _plex_xml(
+                base_url,
+                token,
+                f"/library/sections/{urllib.parse.quote(section_id)}/all",
+            ),
+            _plex_xml(
+                base_url,
+                token,
+                f"/library/sections/{urllib.parse.quote(section_id)}/all",
+                {"type": "4"},
+            ),
+        ]
+        part_paths = {
+            os.path.abspath(part.get("file"))
+            for root in roots
+            for part in root.findall(".//Part")
+            if part.get("file")
+        }
+        for pair in requested:
+            if pair[0] != section_id:
+                continue
+            for part_path in part_paths:
+                try:
+                    if os.path.commonpath((part_path, pair[1])) == pair[1]:
+                        cataloged.add(pair)
+                        break
+                except ValueError:
+                    continue
+    return cataloged
 
 
 def cancel_plex_scans(base_url: str, token: str, section_ids: list[str]) -> list[str]:

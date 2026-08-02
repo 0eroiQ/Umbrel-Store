@@ -6,6 +6,33 @@ from orbit import plex
 
 
 class PlexInventoryTests(unittest.TestCase):
+    def test_cataloged_paths_require_media_parts_inside_requested_folder(self):
+        movies = ET.fromstring("""
+        <MediaContainer><Video type="movie"><Media>
+          <Part file="/media/Movies/Dune (2021)/Dune.mkv"/>
+        </Media></Video></MediaContainer>
+        """)
+        episodes = ET.fromstring("""
+        <MediaContainer><Video type="episode"><Media>
+          <Part file="/media/TV/Silo (2023)/Season 01/Silo S01E01.mkv"/>
+        </Media></Video></MediaContainer>
+        """)
+        with patch.object(plex, "_plex_xml", side_effect=[
+            movies, ET.fromstring("<MediaContainer/>"),
+            ET.fromstring("<MediaContainer/>"), episodes,
+        ]):
+            result = plex.cataloged_plex_paths(
+                "http://plex", "token", [
+                    ("1", "/media/Movies/Dune (2021)"),
+                    ("1", "/media/Movies/Arrival (2016)"),
+                    ("2", "/media/TV/Silo (2023)"),
+                ],
+            )
+        self.assertEqual(result, {
+            ("1", "/media/Movies/Dune (2021)"),
+            ("2", "/media/TV/Silo (2023)"),
+        })
+
     def test_library_sections_include_paths_visible_inside_plex(self):
         root = ET.fromstring("""
         <MediaContainer>
