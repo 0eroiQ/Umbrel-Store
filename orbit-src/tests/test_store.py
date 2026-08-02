@@ -104,6 +104,53 @@ class StoreTests(unittest.TestCase):
             coordinator.verify_library_handoffs()
         self.assertEqual(self.store.list_requests()[0]["status"], "ready")
 
+    def test_delayed_movie_link_recovers_previous_attention_state(self):
+        movies = os.path.join(self.temp.name, "Movies")
+        television = os.path.join(self.temp.name, "TV")
+        cabin = os.path.join(movies, "Cabin Fever (2003) {tmdb-11547}")
+        os.makedirs(cabin)
+        os.makedirs(television)
+        with open(os.path.join(cabin, "Cabin Fever.mkv"), "wb") as handle:
+            handle.write(b"video")
+        item, _ = self.store.add_request({
+            "media_type": "movie", "title": "Cabin Fever",
+            "tmdb_id": 11547, "year": 2003,
+        })
+        self.store.transition(
+            item["id"], "needs_attention", "No suitable cached release was acquired"
+        )
+        coordinator = Coordinator(self.store, self.temp.name)
+        with patch.dict(os.environ, {"ORBIT_MOVIES_DIR": movies, "ORBIT_TV_DIR": television}), \
+                patch.object(coordinator, "mount_is_healthy", return_value=True), \
+                patch.object(coordinator, "refresh_plex_paths_if_healthy", return_value=[{
+                    "section_id": "1", "path": cabin,
+                }]):
+            coordinator.verify_library_handoffs()
+        self.assertEqual(self.store.list_requests()[0]["status"], "ready")
+
+    def test_pending_movie_and_series_scans_retry_and_clear_independently(self):
+        movies = os.path.join(self.temp.name, "Movies")
+        television = os.path.join(self.temp.name, "TV")
+        dune = os.path.join(movies, "Dune (2021) {tmdb-438631}")
+        silo = os.path.join(television, "Silo (2023) {tvdb-403245}")
+        os.makedirs(dune)
+        os.makedirs(silo)
+        for folder in (dune, silo):
+            with open(os.path.join(folder, ".plex-scan-pending"), "w", encoding="utf-8"):
+                pass
+        coordinator = Coordinator(self.store, self.temp.name)
+
+        def refresh(paths):
+            return [] if paths[0][0] == "movie" else [{"section_id": "2"}]
+
+        with patch.dict(os.environ, {"ORBIT_MOVIES_DIR": movies, "ORBIT_TV_DIR": television}), \
+                patch.object(coordinator, "refresh_plex_paths_if_healthy", side_effect=refresh):
+            completed = coordinator.scan_pending_library_paths()
+
+        self.assertEqual(completed, [("show", silo)])
+        self.assertTrue(os.path.isfile(os.path.join(dune, ".plex-scan-pending")))
+        self.assertFalse(os.path.exists(os.path.join(silo, ".plex-scan-pending")))
+
     def test_partial_scan_uses_plex_visible_root_and_matching_section_type(self):
         coordinator = Coordinator(self.store, self.temp.name)
         movies = os.path.join(self.temp.name, "local", "Movies")

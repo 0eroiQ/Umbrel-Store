@@ -98,6 +98,27 @@ def library_has_media_type(library, media_type: str) -> bool:
     return any(getattr(item, "type", None) == expected for item in (library or []))
 
 
+def acquisition_was_handed_off(item) -> bool:
+    """Detect a debrid add even when its WebDAV path is not visible yet."""
+    seen = set()
+
+    def visit(node) -> bool:
+        if node is None or id(node) in seen:
+            return False
+        seen.add(id(node))
+        if getattr(node, "existing_releases", None):
+            return True
+        if getattr(node, "downloaded_releases", None):
+            return True
+        return any(
+            visit(child)
+            for attribute in ("Seasons", "Episodes")
+            for child in (getattr(node, attribute, None) or [])
+        )
+
+    return visit(item)
+
+
 def prepare_item_metadata(item, job: dict, library, matching_service: str, plex):
     """Resolve metadata without requiring an existing item in every Plex section.
 
@@ -211,6 +232,13 @@ def main() -> int:
     item.download(library=[] if scope is not None else library)
     releases = getattr(item, "downloaded_releases", [])
     if not releases:
+        if acquisition_was_handed_off(item):
+            print(json.dumps({
+                "ok": True,
+                "detail": "Acquired; waiting for the mounted source",
+                "paths": [],
+            }))
+            return 0
         print(json.dumps({"ok": False, "detail": "No suitable cached release was acquired"}))
         return 6
     print(json.dumps({"ok": True, "detail": "Acquired and handed to the library", "paths": releases}))
