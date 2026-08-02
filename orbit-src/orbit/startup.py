@@ -15,7 +15,7 @@ DEFAULT_LIBRARY_ROOT = f"{DEFAULT_DOWNLOADS_ROOT}/vortexo"
 DEFAULT_MOVIES_DIR = f"{DEFAULT_LIBRARY_ROOT}/Movies"
 DEFAULT_TV_DIR = f"{DEFAULT_LIBRARY_ROOT}/TV"
 PLEX_SCAN_PENDING_MARKER = ".plex-scan-pending"
-STARTUP_RECONCILIATION_MARKER = "library-reconciliation-v1.done"
+STARTUP_RECONCILIATION_MARKER = "library-reconciliation-v2.done"
 VIDEO_EXTENSIONS = {
     ".avi", ".m2ts", ".m4v", ".mkv", ".mov", ".mp4", ".mpeg",
     ".mpg", ".mts", ".ts", ".webm", ".wmv",

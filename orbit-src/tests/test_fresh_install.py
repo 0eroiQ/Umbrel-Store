@@ -81,7 +81,7 @@ class FreshInstallTests(unittest.TestCase):
             self.assertEqual(_patched_scan([[], []]), [])
             data = os.path.join(root, "data")
             self.assertEqual(queue_existing_library_scans([movies, series], data), [])
-            self.assertTrue(os.path.isfile(os.path.join(data, "library-reconciliation-v1.done")))
+            self.assertTrue(os.path.isfile(os.path.join(data, "library-reconciliation-v2.done")))
 
     def test_existing_movie_and_series_links_are_queued_once_for_startup_scan(self):
         with tempfile.TemporaryDirectory() as root:
