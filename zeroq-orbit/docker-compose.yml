@@ -8,7 +8,7 @@ services:
       PROXY_AUTH_ADD: "true"
 
   server:
-    image: ghcr.io/zeroq-bit/orbit:main@sha256:69b354fc87850fafc2fcbca766f3bfbf128fab15b3a4c4faaf1388470e7e9547
+    image: ghcr.io/zeroq-bit/orbit:main@sha256:56479d2579c4584476241946b1866932ec01d50d00c849994f076a562e158e68
     restart: on-failure
     stop_grace_period: 30s
     environment:
