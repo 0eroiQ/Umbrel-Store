@@ -3,6 +3,7 @@ import unittest
 from types import SimpleNamespace
 
 from orbit.acquire_legacy import (
+    acquisition_was_handed_off,
     apply_quality_profile,
     library_has_media_type,
     load_engine_settings,
@@ -43,6 +44,25 @@ class FakePlex:
 
 
 class AcquireLegacyTests(unittest.TestCase):
+    def test_debrid_handoff_remains_successful_while_mount_is_delayed(self):
+        movie = SimpleNamespace(
+            existing_releases=["Cabin.Fever.2002.1080p"],
+            downloaded_releases=[],
+        )
+        show = SimpleNamespace(
+            existing_releases=[],
+            downloaded_releases=[],
+            Seasons=[SimpleNamespace(
+                existing_releases=[],
+                Episodes=[SimpleNamespace(existing_releases=["Silo.S03E01"])],
+            )],
+        )
+        missing = SimpleNamespace(existing_releases=[], downloaded_releases=[])
+
+        self.assertTrue(acquisition_was_handed_off(movie))
+        self.assertTrue(acquisition_was_handed_off(show))
+        self.assertFalse(acquisition_was_handed_off(missing))
+
     def test_settings_migration_is_non_interactive_and_restores_input(self):
         fake_ui = FakeUI()
         original_input = builtins.input

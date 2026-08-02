@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 
 from .integrations import IntegrationError, fetch_list, fetch_plex_watchlist
 from .link_repair import repair_broken_symlinks
+from .mount_reconcile import reconcile_mounted_sources
 from .plex import plex_library_sections, refresh_plex_paths, scan_plex_library
 from .store import Store
 
@@ -29,6 +30,8 @@ class Coordinator:
         self.last_plex_watchlist_poll = 0.0
         self.last_plex_poll = 0.0
         self.last_link_repair_poll = 0.0
+        self.last_mount_reconcile_poll = 0.0
+        self.last_pending_scan_poll = 0.0
         self.link_repair_lock = threading.Lock()
         self.last_link_repair = {
             "status": "never",
@@ -52,7 +55,13 @@ class Coordinator:
         while not self.stop_event.wait(3):
             try:
                 self.process_one()
+                if time.monotonic() - self.last_mount_reconcile_poll >= 60:
+                    self.reconcile_mounted_media()
+                    self.last_mount_reconcile_poll = time.monotonic()
                 self.verify_library_handoffs()
+                if time.monotonic() - self.last_pending_scan_poll >= 15:
+                    self.scan_pending_library_paths()
+                    self.last_pending_scan_poll = time.monotonic()
                 interval = int(self.store.get_settings(True).get("list_poll_minutes", "60")) * 60
                 if time.monotonic() - self.last_list_poll >= max(300, interval):
                     self.sync_all_lists()
@@ -134,7 +143,10 @@ class Coordinator:
             "movie": os.environ.get("ORBIT_MOVIES_DIR", "/zeroq-media/vortexo/Movies"),
             "show": os.environ.get("ORBIT_TV_DIR", "/zeroq-media/vortexo/TV"),
         }
-        pending = [item for item in self.store.list_requests(500) if item["status"] == "library_pending"]
+        pending = [
+            item for item in self.store.list_requests(500)
+            if item["status"] in {"library_pending", "needs_attention"}
+        ]
         ready_paths = []
         if not self.mount_is_healthy():
             return
@@ -163,6 +175,56 @@ class Coordinator:
                 ready_paths.extend((item["media_type"], os.path.join(root, name)) for name in matching)
         if ready_paths:
             self.refresh_plex_paths_if_healthy(ready_paths)
+
+    @staticmethod
+    def _library_roots() -> dict[str, str]:
+        return {
+            "movie": os.environ.get("ORBIT_MOVIES_DIR", "/zeroq-media/vortexo/Movies"),
+            "show": os.environ.get("ORBIT_TV_DIR", "/zeroq-media/vortexo/TV"),
+        }
+
+    def reconcile_mounted_media(self) -> list[tuple[str, str]]:
+        """Recover transfers that became visible after acquisition returned."""
+        if not self.mount_is_healthy():
+            return []
+        roots = self._library_roots()
+        try:
+            return reconcile_mounted_sources(
+                os.environ.get("PD_DOWNLOADS_DIR", "/zeroq-media"),
+                {"movie": roots["movie"], "tv": roots["show"]},
+                log_fn=lambda message: print(f"[orbit] mount reconciliation: {message}"),
+            )
+        except (ImportError, OSError) as error:
+            print(f"[orbit] mount reconciliation deferred: {error}")
+            return []
+
+    def pending_library_scan_paths(self) -> list[tuple[str, str]]:
+        pending = []
+        for media_type, root in self._library_roots().items():
+            try:
+                entries = os.listdir(root)
+            except OSError:
+                continue
+            for entry in entries:
+                folder = os.path.join(root, entry)
+                marker = os.path.join(folder, ".plex-scan-pending")
+                if os.path.isdir(folder) and os.path.isfile(marker) and not os.path.islink(marker):
+                    pending.append((media_type, folder))
+        return pending
+
+    def scan_pending_library_paths(self) -> list[tuple[str, str]]:
+        completed = []
+        for media_type, folder in self.pending_library_scan_paths():
+            if not self.refresh_plex_paths_if_healthy([(media_type, folder)]):
+                continue
+            marker = os.path.join(folder, ".plex-scan-pending")
+            try:
+                if os.path.isfile(marker) and not os.path.islink(marker):
+                    os.unlink(marker)
+                completed.append((media_type, folder))
+            except OSError:
+                continue
+        return completed
 
     @staticmethod
     def _folder_has_playable_video(path: str) -> bool:

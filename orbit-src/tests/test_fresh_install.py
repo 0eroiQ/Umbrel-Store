@@ -6,6 +6,7 @@ import unittest
 from orbit.startup import (
     patch_legacy_plex_source,
     prepare_media_directories,
+    queue_existing_library_scans,
     rewrite_symlink_target_prefix,
 )
 
@@ -78,6 +79,29 @@ class FreshInstallTests(unittest.TestCase):
             self.assertEqual(os.listdir(movies), [])
             self.assertEqual(os.listdir(series), [])
             self.assertEqual(_patched_scan([[], []]), [])
+            data = os.path.join(root, "data")
+            self.assertEqual(queue_existing_library_scans([movies, series], data), [])
+            self.assertTrue(os.path.isfile(os.path.join(data, "library-reconciliation-v1.done")))
+
+    def test_existing_movie_and_series_links_are_queued_once_for_startup_scan(self):
+        with tempfile.TemporaryDirectory() as root:
+            movies, series = self.prepare(root)
+            dune = os.path.join(movies, "Dune (2021) {tmdb-438631}")
+            silo = os.path.join(series, "Silo (2023) {tvdb-403245}", "Season 01")
+            os.makedirs(dune)
+            os.makedirs(silo)
+            os.symlink("/not-mounted-yet/Dune.mkv", os.path.join(dune, "Dune.mkv"))
+            os.symlink("/not-mounted-yet/Silo.mkv", os.path.join(silo, "Silo S01E01.mkv"))
+            data = os.path.join(root, "data")
+
+            queued = queue_existing_library_scans([movies, series], data)
+
+            self.assertEqual(len(queued), 2)
+            self.assertTrue(os.path.isfile(os.path.join(dune, ".plex-scan-pending")))
+            self.assertTrue(os.path.isfile(os.path.dirname(silo) + "/.plex-scan-pending"))
+            os.unlink(os.path.join(dune, ".plex-scan-pending"))
+            self.assertEqual(queue_existing_library_scans([movies, series], data), [])
+            self.assertFalse(os.path.exists(os.path.join(dune, ".plex-scan-pending")))
 
     def test_directory_creation_refuses_paths_outside_library_root(self):
         with tempfile.TemporaryDirectory() as root:

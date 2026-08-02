@@ -14,6 +14,12 @@ DEFAULT_SOURCE_DIR = f"{DEFAULT_DOWNLOADS_ROOT}/.vortexo-source"
 DEFAULT_LIBRARY_ROOT = f"{DEFAULT_DOWNLOADS_ROOT}/vortexo"
 DEFAULT_MOVIES_DIR = f"{DEFAULT_LIBRARY_ROOT}/Movies"
 DEFAULT_TV_DIR = f"{DEFAULT_LIBRARY_ROOT}/TV"
+PLEX_SCAN_PENDING_MARKER = ".plex-scan-pending"
+STARTUP_RECONCILIATION_MARKER = "library-reconciliation-v1.done"
+VIDEO_EXTENSIONS = {
+    ".avi", ".m2ts", ".m4v", ".mkv", ".mov", ".mp4", ".mpeg",
+    ".mpg", ".mts", ".ts", ".webm", ".wmv",
+}
 
 
 def _is_safe_library_path(path: str, library_root: str) -> bool:
@@ -99,6 +105,51 @@ def rewrite_symlink_target_prefix(
                         os.unlink(temporary)
                 changed += 1
     return changed
+
+
+def queue_existing_library_scans(
+    library_dirs: tuple[str, ...] | list[str],
+    data_dir: str,
+) -> list[str]:
+    """Queue a one-time Plex reconciliation for pre-existing media folders."""
+    done_path = os.path.join(data_dir, STARTUP_RECONCILIATION_MARKER)
+    if os.path.isfile(done_path) and not os.path.islink(done_path):
+        return []
+    queued = []
+    for library_dir in library_dirs:
+        try:
+            entries = os.listdir(library_dir)
+        except OSError:
+            continue
+        for entry in entries:
+            folder = os.path.join(library_dir, entry)
+            if not os.path.isdir(folder) or os.path.islink(folder):
+                continue
+            has_video_entry = False
+            for root, directories, files in os.walk(folder, followlinks=False):
+                directories[:] = [
+                    name for name in directories
+                    if not os.path.islink(os.path.join(root, name))
+                ]
+                if any(os.path.splitext(name)[1].lower() in VIDEO_EXTENSIONS for name in files):
+                    has_video_entry = True
+                    break
+            if not has_video_entry:
+                continue
+            pending = os.path.join(folder, PLEX_SCAN_PENDING_MARKER)
+            with open(pending, "a", encoding="utf-8"):
+                pass
+            queued.append(folder)
+    os.makedirs(data_dir, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=".orbit-reconcile-", dir=data_dir)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write("queued\n")
+        os.replace(temporary, done_path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+    return queued
 
 
 _EMPTY_SECTION_PATTERN = re.compile(
@@ -194,6 +245,14 @@ def main() -> int:
                 print(f"[orbit] migrated {changed} legacy media symlink(s)")
         except (OSError, ValueError) as error:
             print(f"[orbit] media symlink migration skipped: {error}", file=sys.stderr)
+        try:
+            queued = queue_existing_library_scans(
+                [movies_dir, tv_dir], os.environ.get("ORBIT_DATA_DIR", "/data")
+            )
+            if queued:
+                print(f"[orbit] queued {len(queued)} existing media folder(s) for Plex reconciliation")
+        except OSError as error:
+            print(f"[orbit] startup Plex reconciliation skipped: {error}", file=sys.stderr)
 
     plex_path = os.path.join(
         os.environ.get("PD_ROOT", "/app/plex_debrid"),
