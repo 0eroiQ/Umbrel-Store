@@ -30,6 +30,9 @@ jobs:
         working-directory: orbit-src
         run: python3 -m unittest discover -s tests -v
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -44,6 +47,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: orbit-src
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ghcr.io/zeroq-bit/orbit:main
