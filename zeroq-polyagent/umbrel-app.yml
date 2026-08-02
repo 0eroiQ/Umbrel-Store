@@ -2,26 +2,19 @@ manifestVersion: 1.1
 id: zeroq-polyagent
 category: finance
 name: CryptoAgent
-version: '3.2.0'
+version: '3.3.0'
 tagline: Self-hosted AI crypto trading bot — 6 bots, adaptive learning, Binance
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
 description: >-
-  PolyAgent is a self-hosted, encrypted-at-rest platform that monitors real-time
-  prediction-market order books, evaluates a deterministic reversal strategy, and
-  simulates paper trading at executable depth.
+  CryptoAgent is a self-hosted Binance Spot trading system with six automatic strategy
+  bots, scanner-ranked symbol selection, adaptive learning, encrypted SQLCipher storage,
+  and persistent risk controls.
 
-  This v1.0.0 release delivers the paper vertical slice on a complete foundation: a
-  BTC 5-minute lane running end-to-end (fixture-backed by default), with encrypted
-  SQLCipher storage, global risk controls including a persisted emergency-stop, and full
-  decision/fill provenance.
-
-  Live read-only Polymarket market-data adapters (Gamma/CLOB/WSS) are implemented and
-  fail-closed behind operator eligibility — they can be enabled to stream real books and
-  trades. The codebase also now includes a complete fail-closed live-order gateway
-  (EIP-712 order signing, two-step arming, hard-risk ceilings, eligibility probe) — but it
-  is OFF by default and incapable of placing orders unless explicitly armed with real
-  credentials by an eligible operator. Default paper mode is technically incapable of order
-  submission. No profitability claim forms part of acceptance.
+  Paper mode simulates orders. Binance Spot Testnet mode uses exchange test funds and
+  records exchange order references, fills, positions, and restart-recovery evidence.
+  Live-market execution remains protected by a deployment-level interlock that is disabled
+  in this Umbrel package and cannot be bypassed from the dashboard. No profitability claim
+  forms part of this release.
 developer: ZeroQ
 website: https://github.com/ZeroQ-bit/Umbrel-Store/tree/master/zeroq-polyagent
 dependencies: []
@@ -35,11 +28,9 @@ defaultPassword: ''
 torOnly: false
 permissions: []
 releaseNotes: >-
-  v1.1.0 — the container image now ships the full live-trading capability stack:
-  live Polymarket market data (Gamma/CLOB/WSS), authoritative settlement, EIP-712 order
-  signing, an armed fail-closed order gateway (two-step arming, hard-risk ceilings,
-  eligibility probe), and idempotent intent execution. Default mode is still paper and
-  incapable of order submission; all order-placement code is gateway-only and OFF by
-  default. No profitability claim forms part of acceptance.
+  v3.3.0 adds six verified background strategy bots, automatic scanner-ranked symbols
+  (up to 20), Binance Spot Testnet execution, bounded order recovery, exchange order
+  references, restart lifecycle evidence, live multi-exchange arbitrage observation, and
+  fail-closed sentiment gating. The Umbrel deployment keeps live-money execution locked.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store
