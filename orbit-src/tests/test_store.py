@@ -151,6 +151,24 @@ class StoreTests(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(dune, ".plex-scan-pending")))
         self.assertFalse(os.path.exists(os.path.join(silo, ".plex-scan-pending")))
 
+    def test_media_handoffs_run_before_next_watchlist_acquisition(self):
+        coordinator = Coordinator(self.store, self.temp.name)
+        coordinator.last_list_poll = float("inf")
+        coordinator.last_plex_poll = float("inf")
+        coordinator.last_link_repair_poll = float("inf")
+        calls = []
+        with patch.object(
+            coordinator.stop_event, "wait", side_effect=[False, True]
+        ), patch.object(
+            coordinator, "service_media_handoffs",
+            side_effect=lambda: calls.append("handoffs"),
+        ), patch.object(
+            coordinator, "process_one",
+            side_effect=lambda: calls.append("acquisition"),
+        ):
+            coordinator._run()
+        self.assertEqual(calls[:2], ["handoffs", "acquisition"])
+
     def test_partial_scan_uses_plex_visible_root_and_matching_section_type(self):
         coordinator = Coordinator(self.store, self.temp.name)
         movies = os.path.join(self.temp.name, "local", "Movies")

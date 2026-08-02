@@ -54,14 +54,11 @@ class Coordinator:
     def _run(self):
         while not self.stop_event.wait(3):
             try:
+                # Finish already-acquired media before starting another
+                # potentially long downloader subprocess. This prevents a
+                # busy Watchlist queue from starving mount and Plex handoffs.
+                self.service_media_handoffs()
                 self.process_one()
-                if time.monotonic() - self.last_mount_reconcile_poll >= 60:
-                    self.reconcile_mounted_media()
-                    self.last_mount_reconcile_poll = time.monotonic()
-                self.verify_library_handoffs()
-                if time.monotonic() - self.last_pending_scan_poll >= 15:
-                    self.scan_pending_library_paths()
-                    self.last_pending_scan_poll = time.monotonic()
                 interval = int(self.store.get_settings(True).get("list_poll_minutes", "60")) * 60
                 if time.monotonic() - self.last_list_poll >= max(300, interval):
                     self.sync_all_lists()
@@ -108,6 +105,15 @@ class Coordinator:
             except Exception:
                 # Keep the dashboard alive even when one background operation fails.
                 time.sleep(2)
+
+    def service_media_handoffs(self):
+        if time.monotonic() - self.last_mount_reconcile_poll >= 60:
+            self.reconcile_mounted_media()
+            self.last_mount_reconcile_poll = time.monotonic()
+        self.verify_library_handoffs()
+        if time.monotonic() - self.last_pending_scan_poll >= 15:
+            self.scan_pending_library_paths()
+            self.last_pending_scan_poll = time.monotonic()
 
     def process_one(self):
         job = self.store.next_queued()
