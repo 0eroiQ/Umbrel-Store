@@ -95,6 +95,7 @@ def _sync_mount_settings(settings: dict):
         "DEBRID_ZURG_TOKEN": settings.get("realdebrid_api_key", ""),
         "DEBRID_ALLDEBRID_APIKEY": settings.get("alldebrid_api_key", ""),
         "DEBRID_PREMIUMIZE_APIKEY": settings.get("premiumize_api_key", ""),
+        "DEBRID_PREMIUMIZE_CUSTOMERID": settings.get("premiumize_customer_id", ""),
         "DEBRID_RCLONE_VFS_CACHE_MODE": "off",
         "DEBRID_RCLONE_DIR_CACHE_TIME": "1m",
         "DEBRID_RCLONE_LOG_LEVEL": "INFO",
