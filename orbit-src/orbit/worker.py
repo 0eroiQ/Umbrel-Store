@@ -259,6 +259,17 @@ class Coordinator:
                 "error": "Debrid mount is offline; Plex scan was not requested",
             }
             return self.last_link_repair
+        # TorBox-specific symlink retargeting. Skip silently for non-TorBox
+        # providers (Real-Debrid, AllDebrid) where the TorBox API is irrelevant.
+        if str(settings.get("debrid_mode", "webdav")).lower() != "webdav":
+            self.last_link_repair = {
+                **self.last_link_repair,
+                "status": "skipped",
+                "repaired": 0,
+                "scanned": 0,
+                "error": "Link repair runs only for TorBox mode",
+            }
+            return self.last_link_repair
         try:
             max_per_run = max(
                 1, min(int(settings.get("plex_link_repair_max_per_run", "10")), 100)

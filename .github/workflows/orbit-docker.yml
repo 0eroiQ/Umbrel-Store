@@ -6,6 +6,7 @@ on:
       - master
     paths:
       - "orbit-src/**"
+      - "zeroq-orbit/hooks/**"
       - ".github/workflows/orbit-docker.yml"
   workflow_dispatch:
 

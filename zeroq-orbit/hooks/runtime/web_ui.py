@@ -44,8 +44,8 @@ STARTUP_SAFETY_ERROR = None
 # (env_key, label, control, default, help)
 CONFIG_SCHEMA = [
     ("DEBRID_MODE", "Debrid Mode", "select", "webdav",
-     {"options": ["webdav", "zurg"],
-      "help": "webdav = TorBox direct (recommended). zurg = Real-Debrid via zurg."}),
+     {"options": ["webdav", "zurg", "alldebrid"],
+      "help": "webdav = TorBox direct (recommended). zurg = Real-Debrid via zurg. alldebrid = AllDebrid WebDAV."}),
     # TorBox WebDAV
     ("DEBRID_WEBDAV_URL", "WebDAV URL", "text", "https://webdav.torbox.app",
      {"show_if": {"DEBRID_MODE": "webdav"}, "help": "TorBox's WebDAV endpoint."}),
@@ -63,6 +63,10 @@ CONFIG_SCHEMA = [
       "help": "real-debrid.com → Account → Get my API token."}),
     ("DEBRID_ZURG_PORT", "Zurg Port", "text", "9999",
      {"show_if": {"DEBRID_MODE": "zurg"}}),
+    # AllDebrid WebDAV
+    ("DEBRID_ALLDEBRID_APIKEY", "AllDebrid API Key", "password", "",
+     {"show_if": {"DEBRID_MODE": "alldebrid"},
+      "help": "AllDebrid API key (alldebrid.com → Settings → API key). Used as the WebDAV username."}),
     # Rclone tuning. Persistent file caching is intentionally disabled: the
     # debrid provider remains the source of truth and media streams directly.
     (CACHE_MODE_KEY, "Persistent Media Cache", "select", "off",
@@ -310,6 +314,14 @@ def write_rclone_config():
     if mode == "zurg":
         port = cfg.get("DEBRID_ZURG_PORT", "9999")
         body = "[debrid]\ntype = webdav\nurl = http://127.0.0.1:{}/dav\nvendor = other\n".format(port)
+    elif mode == "alldebrid":
+        # AllDebrid WebDAV: API key as username, dummy password "eeeee".
+        apikey = cfg.get("DEBRID_ALLDEBRID_APIKEY", "")
+        if not apikey:
+            return False
+        obscured = _rclone_obscure("eeeee")
+        body = ("[debrid]\ntype = webdav\nurl = https://webdav.debrid.it/\nvendor = other\n"
+                "user = {}\npass = {}\n".format(apikey, obscured))
     else:
         user = cfg.get("DEBRID_WEBDAV_USER", "")
         password = cfg.get("DEBRID_WEBDAV_PASS", "")
@@ -480,6 +492,18 @@ class Mount:
             if mode == "zurg":
                 if not write_zurg_config():
                     return False, "missing Real-Debrid token"
+            elif mode == "alldebrid":
+                if not write_rclone_config():
+                    return False, "missing AllDebrid API key"
+                credential_result = test_webdav(
+                    cfg.get("DEBRID_ALLDEBRID_APIKEY", ""),
+                    "eeeee",
+                    "https://webdav.debrid.it/",
+                    "other",
+                )
+                if not credential_result.get("valid"):
+                    return False, "AllDebrid WebDAV test failed: {}".format(
+                        credential_result.get("error") or "authentication failed")
             else:
                 if not write_rclone_config():
                     return False, "missing TorBox WebDAV username/password"
@@ -742,8 +766,11 @@ class Handler(BaseHTTPRequestHandler):
 
 def _is_configured():
     cfg = read_config()
-    if cfg.get("DEBRID_MODE", "webdav").lower() == "zurg":
+    mode = cfg.get("DEBRID_MODE", "webdav").lower()
+    if mode == "zurg":
         return bool(cfg.get("DEBRID_ZURG_TOKEN"))
+    if mode == "alldebrid":
+        return bool(cfg.get("DEBRID_ALLDEBRID_APIKEY"))
     return bool(cfg.get("DEBRID_WEBDAV_USER") and cfg.get("DEBRID_WEBDAV_PASS"))
 
 

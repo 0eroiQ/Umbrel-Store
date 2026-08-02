@@ -27,8 +27,8 @@ LEGACY_CONFIG = os.environ.get("PD_CONFIG_DIR", "/config")
 VERSION = "0.5.4"
 SECRET_KEYS = {
     "tmdb_api_key", "mdblist_api_key", "trakt_client_id", "torbox_api_key",
-    "webdav_password", "realdebrid_api_key", "plex_token", "prowlarr_api_key",
-    "jackett_api_key", "orionoid_api_key",
+    "webdav_password", "realdebrid_api_key", "alldebrid_api_key", "plex_token",
+    "prowlarr_api_key", "jackett_api_key", "orionoid_api_key",
 }
 DEFAULT_VERSION = [
     "1080p SDR",
@@ -73,13 +73,22 @@ def _sync_mount_settings(settings: dict):
     if mode == "webdav" and settings.get("torbox_api_key"):
         webdav_user = "torbox"
         webdav_pass = settings["torbox_api_key"]
+    # AllDebrid exposes a public WebDAV endpoint (webdav.debrid.it). Auth uses
+    # the API key as the username and a dummy password ("eeeee").
+    if mode == "alldebrid" and settings.get("alldebrid_api_key"):
+        webdav_user = settings["alldebrid_api_key"]
+        webdav_pass = "eeeee"
     payload = {
         "DEBRID_MODE": mode,
-        "DEBRID_WEBDAV_URL": settings.get("webdav_url", "https://webdav.torbox.app"),
+        "DEBRID_WEBDAV_URL": (
+            "https://webdav.debrid.it/" if mode == "alldebrid"
+            else settings.get("webdav_url", "https://webdav.torbox.app")
+        ),
         "DEBRID_WEBDAV_VENDOR": "other",
         "DEBRID_WEBDAV_USER": webdav_user,
         "DEBRID_WEBDAV_PASS": webdav_pass,
         "DEBRID_ZURG_TOKEN": settings.get("realdebrid_api_key", ""),
+        "DEBRID_ALLDEBRID_APIKEY": settings.get("alldebrid_api_key", ""),
         "DEBRID_RCLONE_VFS_CACHE_MODE": "off",
         "DEBRID_RCLONE_DIR_CACHE_TIME": "1m",
         "DEBRID_RCLONE_LOG_LEVEL": "INFO",
@@ -98,7 +107,10 @@ def _sync_legacy_settings(settings: dict):
             legacy = json.load(handle)
     except (OSError, json.JSONDecodeError):
         legacy = {}
-    provider = "Real Debrid" if settings.get("debrid_mode") == "zurg" else "TorBox"
+    provider = {
+        "zurg": "Real Debrid",
+        "alldebrid": "All Debrid",
+    }.get(settings.get("debrid_mode"), "TorBox")
     plex_sections = [part.strip() for part in settings.get("plex_sections", "").split(",") if part.strip()]
     scrapers = [
         name for name in ("torrentio", "prowlarr", "jackett", "orionoid", "nyaa", "1337x")
@@ -109,6 +121,7 @@ def _sync_legacy_settings(settings: dict):
         "Debrid Services": [provider],
         "TorBox API Key": settings.get("torbox_api_key", ""),
         "Real Debrid API Key": settings.get("realdebrid_api_key", ""),
+        "All Debrid API Key": settings.get("alldebrid_api_key", ""),
         "Content Services": ["Plex"] if settings.get("plex_token") else [],
         "Plex users": [[settings.get("plex_username", "Orbit"), settings.get("plex_token", "")]] if settings.get("plex_token") else [],
         "Plex server address": settings.get("plex_url", ""),
@@ -314,7 +327,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/settings":
             allowed = {
                 "tmdb_api_key", "mdblist_api_key", "trakt_client_id", "list_poll_minutes",
-                "debrid_mode", "torbox_api_key", "realdebrid_api_key", "webdav_url",
+                "debrid_mode", "torbox_api_key", "realdebrid_api_key", "alldebrid_api_key", "webdav_url",
                 "webdav_username", "webdav_password", "plex_url", "plex_token", "plex_username",
                 "plex_sections", "complete_aired_series", "series_completion_daily_limit",
                 "plex_watchlist_enabled", "plex_watchlist_poll_minutes",
@@ -341,7 +354,7 @@ class Handler(BaseHTTPRequestHandler):
             previous = store.get_settings(reveal_secrets=True)
             debrid_keys = {
                 "debrid_mode", "torbox_api_key", "realdebrid_api_key",
-                "webdav_url", "webdav_username", "webdav_password",
+                "alldebrid_api_key", "webdav_url", "webdav_username", "webdav_password",
             }
             debrid_defaults = {
                 "debrid_mode": "webdav",
