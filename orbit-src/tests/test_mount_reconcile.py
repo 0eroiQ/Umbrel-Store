@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from orbit.mount_reconcile import reconcile_mounted_sources
 
@@ -79,6 +80,30 @@ class MountReconcileTests(unittest.TestCase):
             )
 
             self.assertEqual(changed, [("show", folder)])
+
+    def test_unrelated_remote_sources_are_not_individually_statted(self):
+        with tempfile.TemporaryDirectory() as root:
+            raw = os.path.join(root, ".vortexo-source")
+            movies = os.path.join(root, "Movies")
+            television = os.path.join(root, "TV")
+            folder = os.path.join(movies, "Cabin Fever (2003) {tmdb-11547}")
+            os.makedirs(os.path.join(raw, "An Entirely Different Movie 2024"))
+            os.makedirs(folder)
+            os.makedirs(television)
+            real_isdir = os.path.isdir
+
+            def guarded_isdir(path):
+                if ".vortexo-source" in path:
+                    raise AssertionError("remote source was statted before matching")
+                return real_isdir(path)
+
+            with patch("orbit.mount_reconcile.os.path.isdir", side_effect=guarded_isdir):
+                changed = reconcile_mounted_sources(
+                    root,
+                    {"movie": movies, "tv": television},
+                    symlinker=FakeSymlinker(),
+                )
+            self.assertEqual(changed, [])
 
 
 if __name__ == "__main__":

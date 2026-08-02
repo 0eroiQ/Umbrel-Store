@@ -107,9 +107,6 @@ def reconcile_mounted_sources(
 
     changed = []
     for source_name in source_names:
-        source_path = os.path.join(raw_root, source_name)
-        if not (os.path.isdir(source_path) or os.path.isfile(source_path)):
-            continue
         folder = _match_source(source_name, folders)
         if not folder:
             continue
