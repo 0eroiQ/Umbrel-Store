@@ -175,6 +175,11 @@ def _normalise_plex_watchlist_item(item: dict) -> dict | None:
         year = int(item["year"]) if item.get("year") else None
     except (TypeError, ValueError):
         year = None
+    plex_guid = str(item.get("guid") or "")
+    expected_prefix = f"plex://{media_type}/"
+    if not plex_guid.startswith(expected_prefix):
+        rating_key = str(item.get("ratingKey") or "")
+        plex_guid = f"{expected_prefix}{rating_key}" if rating_key else ""
     return {
         "media_type": media_type,
         "title": title,
@@ -183,6 +188,7 @@ def _normalise_plex_watchlist_item(item: dict) -> dict | None:
         "imdb_id": imdb_id,
         "poster_path": item.get("thumb") or "",
         "overview": item.get("summary") or "",
+        "plex_guid": plex_guid,
     }
 
 

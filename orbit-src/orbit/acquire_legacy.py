@@ -92,6 +92,43 @@ def load_engine_settings(ui) -> None:
         builtins.input = original_input
 
 
+def library_has_media_type(library, media_type: str) -> bool:
+    """Return whether Plex has a usable metadata exemplar for this request."""
+    expected = "show" if media_type == "show" else "movie"
+    return any(getattr(item, "type", None) == expected for item in (library or []))
+
+
+def prepare_item_metadata(item, job: dict, library, matching_service: str, plex):
+    """Resolve metadata without requiring an existing item in every Plex section.
+
+    Plex Watchlist rows already carry a canonical ``plex://`` GUID. Loading that
+    cloud item directly works even when the local Movies and TV libraries are
+    empty. Other sources retain the legacy local-library match when an exemplar
+    of the requested media type exists.
+    """
+    if matching_service != "content.services.plex":
+        item.match(matching_service)
+        return item
+
+    media_type = "show" if job.get("media_type") == "show" else "movie"
+    plex_guid = str(job.get("plex_guid") or "")
+    expected_prefix = f"plex://{media_type}/"
+    if plex_guid.startswith(expected_prefix):
+        try:
+            factory = plex.show if media_type == "show" else plex.movie
+            resolved = factory(plex_guid)
+            if resolved is not None:
+                return resolved
+        except Exception:
+            # The native request still contains title/year/IDs, so movies and
+            # other metadata-capable sources can continue without cloud data.
+            pass
+
+    if library_has_media_type(library, media_type):
+        item.match(matching_service)
+    return item
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print(json.dumps({"ok": False, "detail": "missing request file"}))
@@ -128,6 +165,7 @@ def main() -> int:
     root = SimpleNamespace(
         type="tv" if job["media_type"] == "show" else "movie",
         title=job["title"],
+        year=job.get("year"),
         updatedAt=datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z"),
         media=media,
     )
@@ -142,15 +180,6 @@ def main() -> int:
         print(json.dumps({"ok": False, "detail": "Connect Plex or Trakt before adding media"}))
         return 3
 
-    item.match(matching_service)
-    item.watchlist = OrbitWatchlist
-    scope = replacement_scope(job)
-    if scope is not None and not restrict_replacement_item(item, scope):
-        print(json.dumps({
-            "ok": False,
-            "detail": "The selected season or episode is no longer available in Plex metadata",
-        }))
-        return 4
     libraries = content.classes.library()
     library_factory = next(iter(libraries), None)
     if library_factory is None:
@@ -160,6 +189,16 @@ def main() -> int:
     # acquisition seeds it; a non-empty Movies section does not require Series
     # content (and vice versa).
     library = library_factory() or []
+
+    item = prepare_item_metadata(item, job, library, matching_service, plex)
+    item.watchlist = OrbitWatchlist
+    scope = replacement_scope(job)
+    if scope is not None and not restrict_replacement_item(item, scope):
+        print(json.dumps({
+            "ok": False,
+            "detail": "The selected season or episode is no longer available in Plex metadata",
+        }))
+        return 4
 
     if library and job.get("source") == "series-monitor" and item.complete(library):
         print(json.dumps({

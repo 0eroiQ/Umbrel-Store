@@ -4,7 +4,9 @@ from types import SimpleNamespace
 
 from orbit.acquire_legacy import (
     apply_quality_profile,
+    library_has_media_type,
     load_engine_settings,
+    prepare_item_metadata,
     replacement_scope,
     restrict_replacement_item,
 )
@@ -16,6 +18,28 @@ class FakeUI:
 
     def load(self):
         self.answer = input("Press Enter to update your settings:")
+
+
+class FakeItem:
+    def __init__(self, media_type):
+        self.type = media_type
+        self.matches = []
+
+    def match(self, service):
+        self.matches.append(service)
+
+
+class FakePlex:
+    def __init__(self):
+        self.loaded = []
+
+    def movie(self, guid):
+        self.loaded.append(("movie", guid))
+        return SimpleNamespace(type="movie", title="Dune", year=2021)
+
+    def show(self, guid):
+        self.loaded.append(("show", guid))
+        return SimpleNamespace(type="show", title="Foundation", year=2021, Seasons=[])
 
 
 class AcquireLegacyTests(unittest.TestCase):
@@ -50,6 +74,61 @@ class AcquireLegacyTests(unittest.TestCase):
         apply_quality_profile(releases, "4k")
         rules = releases.sort.versions[0][3]
         self.assertIn(["resolution", "requirement", "==", "2160"], rules)
+
+    def test_both_empty_libraries_load_watchlist_movie_from_plex_cloud(self):
+        plex = FakePlex()
+        native = FakeItem("movie")
+        result = prepare_item_metadata(native, {
+            "media_type": "movie",
+            "plex_guid": "plex://movie/movie-key",
+        }, [], "content.services.plex", plex)
+        self.assertEqual(result.title, "Dune")
+        self.assertEqual(plex.loaded, [("movie", "plex://movie/movie-key")])
+        self.assertEqual(native.matches, [])
+
+    def test_no_series_item_loads_watchlist_show_from_plex_cloud(self):
+        plex = FakePlex()
+        native = FakeItem("show")
+        movie_only = [SimpleNamespace(type="movie")]
+        result = prepare_item_metadata(native, {
+            "media_type": "show",
+            "plex_guid": "plex://show/show-key",
+        }, movie_only, "content.services.plex", plex)
+        self.assertEqual(result.title, "Foundation")
+        self.assertEqual(plex.loaded, [("show", "plex://show/show-key")])
+
+    def test_no_movies_item_loads_watchlist_movie_from_plex_cloud(self):
+        plex = FakePlex()
+        native = FakeItem("movie")
+        series_only = [SimpleNamespace(type="show")]
+        result = prepare_item_metadata(native, {
+            "media_type": "movie",
+            "plex_guid": "plex://movie/movie-key",
+        }, series_only, "content.services.plex", plex)
+        self.assertEqual(result.title, "Dune")
+        self.assertFalse(library_has_media_type(series_only, "movie"))
+
+    def test_movies_only_can_use_local_movie_metadata_without_requiring_series(self):
+        plex = FakePlex()
+        native = FakeItem("movie")
+        movie_only = [SimpleNamespace(type="movie")]
+        result = prepare_item_metadata(
+            native, {"media_type": "movie"}, movie_only,
+            "content.services.plex", plex,
+        )
+        self.assertIs(result, native)
+        self.assertEqual(native.matches, ["content.services.plex"])
+
+    def test_series_only_can_use_local_series_metadata_without_requiring_movies(self):
+        plex = FakePlex()
+        native = FakeItem("show")
+        series_only = [SimpleNamespace(type="show")]
+        result = prepare_item_metadata(
+            native, {"media_type": "show"}, series_only,
+            "content.services.plex", plex,
+        )
+        self.assertIs(result, native)
+        self.assertEqual(native.matches, ["content.services.plex"])
 
 
 if __name__ == "__main__":
