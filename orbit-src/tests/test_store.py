@@ -104,6 +104,38 @@ class StoreTests(unittest.TestCase):
             coordinator.verify_library_handoffs()
         self.assertEqual(self.store.list_requests()[0]["status"], "ready")
 
+    def test_partial_scan_uses_plex_visible_root_and_matching_section_type(self):
+        coordinator = Coordinator(self.store, self.temp.name)
+        movies = os.path.join(self.temp.name, "local", "Movies")
+        television = os.path.join(self.temp.name, "local", "TV")
+        show_folder = os.path.join(television, "Silo (2023)")
+        with patch.dict(os.environ, {
+            "ORBIT_MOVIES_DIR": movies,
+            "ORBIT_TV_DIR": television,
+        }), patch.object(coordinator, "mount_is_healthy", return_value=True), \
+                patch("orbit.worker.plex_library_sections", return_value=[
+                    {
+                        "section_id": "1", "media_type": "movie",
+                        "locations": ["/zeroq-media/vortexo/Movies"],
+                    },
+                    {
+                        "section_id": "2", "media_type": "show",
+                        "locations": ["/zeroq-media/vortexo/TV"],
+                    },
+                ]), patch("orbit.worker.refresh_plex_paths", return_value=[{
+                    "section_id": "2",
+                    "path": "/zeroq-media/vortexo/TV/Silo (2023)",
+                }]) as refresh:
+            result = coordinator.refresh_plex_paths_if_healthy(
+                [("show", show_folder)],
+                {"plex_url": "http://plex", "plex_token": "token", "plex_sections": "1,2"},
+            )
+        self.assertEqual(result[0]["section_id"], "2")
+        refresh.assert_called_once_with(
+            "http://plex", "token",
+            [("2", "/zeroq-media/vortexo/TV/Silo (2023)")],
+        )
+
     def test_plex_watchlist_skips_owned_and_duplicate_titles(self):
         self.store.replace_plex_library([{
             "plex_rating_key": "101", "section_id": "4", "media_type": "movie",
