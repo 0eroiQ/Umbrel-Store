@@ -623,9 +623,24 @@ async function loadSettings() {
         form.elements[key].value = value;
       }
     });
+    updateDebridFields();
   } catch (error) {
     toast(error.message);
   }
+}
+
+function updateDebridFields() {
+  const mode = document.forms["settings-form"]?.elements["debrid_mode"]?.value
+    || $("#settings-form [name='debrid_mode']")?.value || "webdav";
+  $$("[data-debrid]").forEach(label => {
+    label.style.display = label.dataset.debrid === mode ? "" : "none";
+  });
+}
+
+const debridModeSelect = $("#settings-form [name='debrid_mode']");
+if (debridModeSelect) {
+  debridModeSelect.addEventListener("change", updateDebridFields);
+  updateDebridFields();
 }
 
 $$("[data-settings-tab]").forEach(button => button.addEventListener("click", () => {
