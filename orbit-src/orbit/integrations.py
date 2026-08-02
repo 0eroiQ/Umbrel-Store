@@ -8,6 +8,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from . import __version__
+
 
 class IntegrationError(RuntimeError):
     pass
@@ -193,7 +195,7 @@ def fetch_plex_watchlist(token: str, limit: int = 100) -> list[dict]:
     headers = {
         "X-Plex-Token": token,
         "X-Plex-Product": "Orbit",
-        "X-Plex-Version": "0.5.4",
+        "X-Plex-Version": __version__,
         "X-Plex-Client-Identifier": "orbit-umbrel",
     }
     items = []

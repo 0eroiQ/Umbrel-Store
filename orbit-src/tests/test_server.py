@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from orbit import __version__
+
 _SERVER_DATA = tempfile.TemporaryDirectory()
 os.environ["ORBIT_DATA_DIR"] = _SERVER_DATA.name
 from orbit import server
@@ -14,6 +16,9 @@ def tearDownModule():
 
 
 class ServerSettingsTests(unittest.TestCase):
+    def test_health_version_uses_package_release(self):
+        self.assertEqual(server.VERSION, __version__)
+
     def test_scraper_settings_are_written_to_legacy_engine(self):
         with tempfile.TemporaryDirectory() as directory:
             with patch.object(server, "LEGACY_CONFIG", directory):

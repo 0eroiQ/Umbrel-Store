@@ -628,6 +628,48 @@ class Store:
                 (request_id, state, detail, now),
             )
 
+    def retry_failed_request(
+        self,
+        request_id: int,
+        source: str,
+        source_ref: str,
+        profile: str,
+    ) -> tuple[dict, bool]:
+        """Requeue an explicitly retried failure without disturbing other sources.
+
+        Scheduled imports continue to deduplicate terminal failures. This method
+        is reserved for an explicit user-triggered sync, so a failed acquisition
+        cannot be requeued automatically every polling interval.
+        """
+        now = utc_now()
+        detail = f"Retry requested from {source}"
+        with self._lock, self.connection() as db:
+            existing = db.execute(
+                "SELECT * FROM requests WHERE id=?", (request_id,)
+            ).fetchone()
+            if (
+                existing is None
+                or existing["status"] != "needs_attention"
+                or existing["source"] != source
+                or existing["source_ref"] != source_ref
+            ):
+                return (dict(existing), False) if existing is not None else ({}, False)
+            db.execute(
+                """UPDATE requests
+                   SET status='queued', status_detail=?, profile=?, updated_at=?
+                   WHERE id=?""",
+                (detail, profile, now, request_id),
+            )
+            db.execute(
+                """INSERT INTO request_events(request_id, state, detail, created_at)
+                   VALUES (?, 'queued', ?, ?)""",
+                (request_id, detail, now),
+            )
+            row = db.execute(
+                "SELECT * FROM requests WHERE id=?", (request_id,)
+            ).fetchone()
+        return dict(row), True
+
     def events(self, request_id: int) -> list[dict]:
         with self.connection() as db:
             rows = db.execute(

@@ -406,7 +406,11 @@ class Coordinator:
                 except IntegrationError:
                     pass
 
-    def sync_plex_watchlist(self, settings: dict | None = None) -> dict:
+    def sync_plex_watchlist(
+        self,
+        settings: dict | None = None,
+        retry_failed: bool = False,
+    ) -> dict:
         settings = settings or self.store.get_settings(reveal_secrets=True)
         enabled = str(settings.get("plex_watchlist_enabled", "false")).lower() in {
             "1", "true", "yes", "on",
@@ -424,6 +428,7 @@ class Coordinator:
             profile = "best"
         items = fetch_plex_watchlist(settings.get("plex_token", ""), limit)
         added = 0
+        retried = 0
         skipped_existing = 0
         skipped_requested = 0
         for item in items:
@@ -431,14 +436,24 @@ class Coordinator:
                 skipped_existing += 1
                 continue
             item["profile"] = profile
-            _, created = self.store.add_request(
+            request, created = self.store.add_request(
                 item, source="plex-watchlist", source_ref="plex-account"
             )
             added += int(created)
-            skipped_requested += int(not created)
+            was_retried = False
+            if not created and retry_failed:
+                _request, was_retried = self.store.retry_failed_request(
+                    request["id"],
+                    source="plex-watchlist",
+                    source_ref="plex-account",
+                    profile=profile,
+                )
+                retried += int(was_retried)
+            skipped_requested += int(not created and not was_retried)
         return {
             "found": len(items),
             "added": added,
+            "retried": retried,
             "skipped_existing": skipped_existing,
             "skipped_requested": skipped_requested,
         }

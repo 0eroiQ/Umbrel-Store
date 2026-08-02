@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-orbit
 category: media
 name: Orbit
-version: "0.6.7"
+version: "0.6.8"
 tagline: Search, automate, mount, and deliver debrid media to Plex
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-orbit/icon.png
 description: >-
@@ -41,9 +41,9 @@ defaultPassword: ""
 torOnly: false
 permissions: []
 releaseNotes: >-
-  Fixes fresh installations with empty media libraries. Orbit now safely creates
-  missing Movies and TV folders, accepts fully empty, Movies-only, and Series-only
-  Plex libraries, continues scanning when one media section is empty, and shows a
-  first-run empty state instead of failing or requiring placeholder media.
+  Restores Plex Watchlist requests that were left in Needs Attention by an earlier
+  library failure. An explicit Sync Watchlist now retries failed Watchlist jobs,
+  while scheduled polling remains deduplicated to prevent automatic retry loops.
+  The health endpoint now reports the current Orbit release version.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store

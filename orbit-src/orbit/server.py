@@ -12,6 +12,7 @@ import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from . import __version__
 from .integrations import IntegrationError, search_tmdb
 from .manifests import build_media_manifest
 from .plex import cancel_plex_scans, configure_plex_remote_library, fetch_plex_artwork
@@ -24,7 +25,7 @@ STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 PORT = int(os.environ.get("ORBIT_PORT", "8080"))
 MOUNT_API = os.environ.get("ORBIT_MOUNT_API", "http://mount:8080")
 LEGACY_CONFIG = os.environ.get("PD_CONFIG_DIR", "/config")
-VERSION = "0.5.4"
+VERSION = __version__
 SECRET_KEYS = {
     "tmdb_api_key", "mdblist_api_key", "trakt_client_id", "torbox_api_key",
     "webdav_password", "realdebrid_api_key", "alldebrid_api_key", "premiumize_api_key",
@@ -487,7 +488,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 return self._json({
                     "ok": True,
-                    **coordinator.sync_plex_watchlist(),
+                    **coordinator.sync_plex_watchlist(retry_failed=True),
                 })
             except IntegrationError as error:
                 return self._json({"error": str(error)}, 400)

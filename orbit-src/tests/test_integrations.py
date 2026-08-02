@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 
+from orbit import __version__
 from orbit import integrations
 
 
@@ -84,6 +85,7 @@ class IntegrationTests(unittest.TestCase):
             [("movie", 438631), ("show", 95396)],
         )
         self.assertEqual(request.call_args.args[1]["X-Plex-Token"], "plex-token")
+        self.assertEqual(request.call_args.args[1]["X-Plex-Version"], __version__)
         parsed = integrations.urllib.parse.urlparse(request.call_args.args[0])
         query = integrations.urllib.parse.parse_qs(parsed.query)
         self.assertEqual(query["X-Plex-Container-Size"], ["25"])
