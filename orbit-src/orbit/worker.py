@@ -31,6 +31,7 @@ class Coordinator:
         self.data_dir = data_dir
         self.stop_event = threading.Event()
         self.thread: threading.Thread | None = None
+        self.maintenance_thread: threading.Thread | None = None
         self.last_list_poll = 0.0
         self.last_plex_watchlist_poll = 0.0
         self.last_plex_poll = 0.0
@@ -48,10 +49,18 @@ class Coordinator:
         }
 
     def start(self):
-        if self.thread and self.thread.is_alive():
-            return
-        self.thread = threading.Thread(target=self._run, name="orbit-coordinator", daemon=True)
-        self.thread.start()
+        if not self.thread or not self.thread.is_alive():
+            self.thread = threading.Thread(
+                target=self._run, name="orbit-coordinator", daemon=True
+            )
+            self.thread.start()
+        if not self.maintenance_thread or not self.maintenance_thread.is_alive():
+            self.maintenance_thread = threading.Thread(
+                target=self._run_media_handoffs,
+                name="orbit-media-handoffs",
+                daemon=True,
+            )
+            self.maintenance_thread.start()
 
     def stop(self):
         self.stop_event.set()
@@ -59,10 +68,6 @@ class Coordinator:
     def _run(self):
         while not self.stop_event.wait(3):
             try:
-                # Finish already-acquired media before starting another
-                # potentially long downloader subprocess. This prevents a
-                # busy Watchlist queue from starving mount and Plex handoffs.
-                self.service_media_handoffs()
                 self.process_one()
                 interval = int(self.store.get_settings(True).get("list_poll_minutes", "60")) * 60
                 if time.monotonic() - self.last_list_poll >= max(300, interval):
@@ -109,6 +114,15 @@ class Coordinator:
                     self.last_link_repair_poll = time.monotonic()
             except Exception:
                 # Keep the dashboard alive even when one background operation fails.
+                time.sleep(2)
+
+    def _run_media_handoffs(self):
+        """Keep mount recovery and Plex scans independent of slow downloads."""
+        while not self.stop_event.wait(3):
+            try:
+                self.service_media_handoffs()
+            except Exception:
+                # A provider or Plex failure must not stop future retries.
                 time.sleep(2)
 
     def service_media_handoffs(self):

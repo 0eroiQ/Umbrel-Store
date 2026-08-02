@@ -175,23 +175,42 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(completed, [])
         self.assertTrue(os.path.isfile(marker))
 
-    def test_media_handoffs_run_before_next_watchlist_acquisition(self):
+    def test_media_handoffs_have_an_independent_retry_loop(self):
         coordinator = Coordinator(self.store, self.temp.name)
-        coordinator.last_list_poll = float("inf")
-        coordinator.last_plex_poll = float("inf")
-        coordinator.last_link_repair_poll = float("inf")
         calls = []
         with patch.object(
             coordinator.stop_event, "wait", side_effect=[False, True]
         ), patch.object(
             coordinator, "service_media_handoffs",
             side_effect=lambda: calls.append("handoffs"),
-        ), patch.object(
-            coordinator, "process_one",
-            side_effect=lambda: calls.append("acquisition"),
         ):
-            coordinator._run()
-        self.assertEqual(calls[:2], ["handoffs", "acquisition"])
+            coordinator._run_media_handoffs()
+        self.assertEqual(calls, ["handoffs"])
+
+    def test_start_launches_queue_and_media_handoff_workers(self):
+        coordinator = Coordinator(self.store, self.temp.name)
+        workers = []
+
+        class FakeThread:
+            def __init__(self, **kwargs):
+                self.name = kwargs["name"]
+                self.started = False
+                workers.append(self)
+
+            def is_alive(self):
+                return False
+
+            def start(self):
+                self.started = True
+
+        with patch("orbit.worker.threading.Thread", side_effect=FakeThread):
+            coordinator.start()
+
+        self.assertEqual(
+            [worker.name for worker in workers],
+            ["orbit-coordinator", "orbit-media-handoffs"],
+        )
+        self.assertTrue(all(worker.started for worker in workers))
 
     def test_partial_scan_uses_plex_visible_root_and_matching_section_type(self):
         coordinator = Coordinator(self.store, self.temp.name)

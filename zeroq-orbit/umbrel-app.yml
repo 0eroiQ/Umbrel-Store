@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-orbit
 category: media
 name: Orbit
-version: "0.6.14"
+version: "0.6.15"
 tagline: Search, automate, mount, and deliver debrid media to Plex
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-orbit/icon.png
 description: >-
@@ -44,7 +44,7 @@ releaseNotes: >-
   Completes delayed Premiumize and WebDAV media handoffs automatically, retries
   reserved movie and series folders when their mounted source appears, and
   keeps targeted Plex scans pending until the recovered media is visible in
-  Plex's catalog. Empty, Movies-only, and Series-only libraries remain fully
-  supported.
+  Plex's catalog. Media recovery runs independently from long Watchlist
+  downloads. Empty, Movies-only, and Series-only libraries remain supported.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store
