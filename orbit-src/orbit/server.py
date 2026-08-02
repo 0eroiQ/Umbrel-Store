@@ -167,6 +167,16 @@ def _sync_legacy_settings(settings: dict):
         json.dump(legacy, handle, indent=2)
     os.replace(temporary, path)
 
+    # Clear the stale plex_debrid metadata cache so the next acquisition run
+    # re-queries Plex fresh instead of reading a cached "empty library" result.
+    # This fixes the chicken-and-egg problem where plex_debrid refuses to
+    # download because it cached the library state before content was added.
+    pkl_path = os.path.join(LEGACY_CONFIG, "plex_metadata.pkl")
+    try:
+        os.remove(pkl_path)
+    except OSError:
+        pass
+
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "Orbit/0.1"
