@@ -8,7 +8,7 @@ services:
       PROXY_AUTH_ADD: "true"
 
   server:
-    image: ghcr.io/zeroq-bit/orbit:main@sha256:d6f250cccf9d666ee0242585abbecdd5411e771d59a1e4a2c6586388213c424d
+    image: ghcr.io/zeroq-bit/orbit:main@sha256:27db08073c0258d39dd470664e270499bcd5b07f687488edc7e8f64296e8050f
     restart: on-failure
     stop_grace_period: 30s
     environment:
@@ -20,18 +20,19 @@ services:
       PD_CONFIG_DIR: /config
       PD_LOG_DIR: /logs
       PD_ROOT: /app/plex_debrid
-      PD_DOWNLOADS_DIR: /downloads
-      PD_VORTEXO_SOURCE_DIR: /downloads/.vortexo-source
-      PD_LIBRARY_MOVIES_DIR: /downloads/vortexo/Movies
-      PD_LIBRARY_TV_DIR: /downloads/vortexo/TV
-      ORBIT_MOVIES_DIR: /downloads/vortexo/Movies
-      ORBIT_TV_DIR: /downloads/vortexo/TV
+      PD_DOWNLOADS_DIR: /zeroq-media
+      PD_VORTEXO_SOURCE_DIR: /zeroq-media/.vortexo-source
+      PD_LIBRARY_MOVIES_DIR: /zeroq-media/vortexo/Movies
+      PD_LIBRARY_TV_DIR: /zeroq-media/vortexo/TV
+      ORBIT_LIBRARY_ROOT: /zeroq-media/vortexo
+      ORBIT_MOVIES_DIR: /zeroq-media/vortexo/Movies
+      ORBIT_TV_DIR: /zeroq-media/vortexo/TV
     volumes:
       - ${APP_DATA_DIR}/data:/data
       - ${APP_DATA_DIR}/config:/config
       - ${APP_DATA_DIR}/logs:/logs
-      - ${UMBREL_ROOT}/data/zeroq-media:/downloads:rslave,ro
-      - ${UMBREL_ROOT}/data/zeroq-media/vortexo:/downloads/vortexo
+      - ${UMBREL_ROOT}/data/zeroq-media:/zeroq-media:rslave,ro
+      - ${UMBREL_ROOT}/data/zeroq-media/vortexo:/zeroq-media/vortexo
     networks:
       default:
         aliases:

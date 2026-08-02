@@ -3,7 +3,11 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from orbit.startup import patch_legacy_plex_source, prepare_media_directories
+from orbit.startup import (
+    patch_legacy_plex_source,
+    prepare_media_directories,
+    rewrite_symlink_target_prefix,
+)
 
 
 LEGACY_SCANNER = '''\
@@ -92,6 +96,60 @@ class FreshInstallTests(unittest.TestCase):
         again, changed_again = patch_legacy_plex_source(patched)
         self.assertFalse(changed_again)
         self.assertEqual(again, patched)
+
+    def test_existing_orbit_links_are_migrated_to_the_plex_visible_root(self):
+        with tempfile.TemporaryDirectory() as root:
+            movies, series = self.prepare(root)
+            episode_dir = os.path.join(series, "Silo (2023)", "Season 01")
+            os.makedirs(episode_dir)
+            episode = os.path.join(episode_dir, "Silo - S01E01.mkv")
+            os.symlink(
+                "/downloads/.vortexo-source/shows/Silo/S01E01.mkv",
+                episode,
+            )
+
+            changed = rewrite_symlink_target_prefix(
+                [movies, series],
+                "/downloads/.vortexo-source",
+                "/zeroq-media/.vortexo-source",
+            )
+
+            self.assertEqual(changed, 1)
+            self.assertEqual(
+                os.readlink(episode),
+                "/zeroq-media/.vortexo-source/shows/Silo/S01E01.mkv",
+            )
+            self.assertEqual(
+                rewrite_symlink_target_prefix(
+                    [movies, series],
+                    "/downloads/.vortexo-source",
+                    "/zeroq-media/.vortexo-source",
+                ),
+                0,
+            )
+
+    def test_symlink_migration_ignores_unrelated_and_missing_libraries(self):
+        with tempfile.TemporaryDirectory() as root:
+            movies = os.path.join(root, "Movies")
+            os.makedirs(movies)
+            regular = os.path.join(movies, "notes.txt")
+            unrelated = os.path.join(movies, "external.mkv")
+            relative = os.path.join(movies, "relative.mkv")
+            with open(regular, "w", encoding="utf-8") as handle:
+                handle.write("keep")
+            os.symlink("/somewhere-else/video.mkv", unrelated)
+            os.symlink("../source/video.mkv", relative)
+
+            changed = rewrite_symlink_target_prefix(
+                [movies, os.path.join(root, "missing")],
+                "/downloads/.vortexo-source",
+                "/zeroq-media/.vortexo-source",
+            )
+
+            self.assertEqual(changed, 0)
+            self.assertEqual(Path(regular).read_text(encoding="utf-8"), "keep")
+            self.assertEqual(os.readlink(unrelated), "/somewhere-else/video.mkv")
+            self.assertEqual(os.readlink(relative), "../source/video.mkv")
 
     def test_empty_library_has_a_first_run_empty_state(self):
         app = (Path(__file__).parents[1] / "orbit" / "static" / "app.js").read_text(

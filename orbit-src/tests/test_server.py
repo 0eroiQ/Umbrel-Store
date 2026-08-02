@@ -50,6 +50,31 @@ class ServerSettingsTests(unittest.TestCase):
         self.assertEqual(legacy["Prowlarr Base URL"], "http://prowlarr:9696")
         self.assertEqual(legacy["Prowlarr API Key"], "prowlarr-token")
         self.assertEqual(legacy["Library update services"], [])
+        self.assertEqual(legacy["Symlinker Mount Path"], "/zeroq-media")
+
+    def test_symlinker_uses_the_configured_plex_visible_mount(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(server, "LEGACY_CONFIG", directory), patch.dict(
+                os.environ,
+                {
+                    "PD_DOWNLOADS_DIR": "/shared-media",
+                    "ORBIT_MOVIES_DIR": "/shared-media/vortexo/Movies",
+                    "ORBIT_TV_DIR": "/shared-media/vortexo/TV",
+                },
+            ):
+                server._sync_legacy_settings({})
+            with open(os.path.join(directory, "settings.json"), encoding="utf-8") as handle:
+                legacy = json.load(handle)
+
+        self.assertEqual(legacy["Symlinker Mount Path"], "/shared-media")
+        self.assertEqual(
+            legacy["Symlinker Movies Library"],
+            "/shared-media/vortexo/Movies",
+        )
+        self.assertEqual(
+            legacy["Symlinker TV Library"],
+            "/shared-media/vortexo/TV",
+        )
 
 
 if __name__ == "__main__":

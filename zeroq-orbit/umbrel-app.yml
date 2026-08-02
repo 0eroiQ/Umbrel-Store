@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-orbit
 category: media
 name: Orbit
-version: "0.6.10"
+version: "0.6.11"
 tagline: Search, automate, mount, and deliver debrid media to Plex
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-orbit/icon.png
 description: >-
@@ -41,9 +41,8 @@ defaultPassword: ""
 torOnly: false
 permissions: []
 releaseNotes: >-
-  Completes fresh Plex delivery by translating Orbit's media folder into the
-  path visible inside Plex and selecting the matching movie or TV section.
-  Includes the 0.6.9 first-media fix, so empty Movies and TV libraries can
-  acquire their first Plex Watchlist item and request the correct partial scan.
+  Makes Orbit-created media links resolve inside Plex by aligning Orbit's
+  shared-media path with Plex and safely migrating older matching links at
+  startup. Empty, Movies-only, and Series-only libraries remain fully supported.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store

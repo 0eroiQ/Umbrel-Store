@@ -8,7 +8,10 @@ import sys
 import tempfile
 
 
-DEFAULT_LIBRARY_ROOT = "/downloads/vortexo"
+DEFAULT_DOWNLOADS_ROOT = "/zeroq-media"
+DEFAULT_LEGACY_SOURCE_DIR = "/downloads/.vortexo-source"
+DEFAULT_SOURCE_DIR = f"{DEFAULT_DOWNLOADS_ROOT}/.vortexo-source"
+DEFAULT_LIBRARY_ROOT = f"{DEFAULT_DOWNLOADS_ROOT}/vortexo"
 DEFAULT_MOVIES_DIR = f"{DEFAULT_LIBRARY_ROOT}/Movies"
 DEFAULT_TV_DIR = f"{DEFAULT_LIBRARY_ROOT}/TV"
 
@@ -45,6 +48,57 @@ def prepare_media_directories(
             raise OSError(f"Media library path is not a directory: {path}")
         prepared.append(path)
     return prepared
+
+
+def rewrite_symlink_target_prefix(
+    library_dirs: tuple[str, ...] | list[str],
+    old_prefix: str,
+    new_prefix: str,
+) -> int:
+    """Atomically retarget legacy Orbit links inside the configured libraries.
+
+    Only absolute symlink targets rooted at ``old_prefix`` are changed. Regular
+    files, directory symlinks, and links to any other target are left alone.
+    """
+    old_prefix = os.path.abspath(old_prefix)
+    new_prefix = os.path.abspath(new_prefix)
+    if old_prefix == os.path.sep or new_prefix == os.path.sep:
+        raise ValueError("Refusing to migrate symlinks from or to the filesystem root")
+    if old_prefix == new_prefix:
+        return 0
+
+    changed = 0
+    for library_dir in library_dirs:
+        if not os.path.isdir(library_dir) or os.path.islink(library_dir):
+            continue
+        for root, directories, files in os.walk(library_dir, followlinks=False):
+            directories[:] = [
+                name for name in directories
+                if not os.path.islink(os.path.join(root, name))
+            ]
+            for name in files:
+                path = os.path.join(root, name)
+                if not os.path.islink(path):
+                    continue
+                target = os.readlink(path)
+                if not os.path.isabs(target):
+                    continue
+                if target != old_prefix and not target.startswith(old_prefix + os.sep):
+                    continue
+                replacement = new_prefix + target[len(old_prefix):]
+                descriptor, temporary = tempfile.mkstemp(
+                    prefix=".orbit-link-", dir=root
+                )
+                os.close(descriptor)
+                os.unlink(temporary)
+                try:
+                    os.symlink(replacement, temporary)
+                    os.replace(temporary, path)
+                finally:
+                    if os.path.lexists(temporary):
+                        os.unlink(temporary)
+                changed += 1
+    return changed
 
 
 _EMPTY_SECTION_PATTERN = re.compile(
@@ -127,6 +181,19 @@ def main() -> int:
         prepare_media_directories(movies_dir, tv_dir, library_root)
     except (OSError, ValueError) as error:
         print(f"[orbit] media directory preparation skipped: {error}", file=sys.stderr)
+    else:
+        old_source_dir = os.environ.get(
+            "ORBIT_LEGACY_SOURCE_DIR", DEFAULT_LEGACY_SOURCE_DIR
+        )
+        source_dir = os.environ.get("PD_VORTEXO_SOURCE_DIR", DEFAULT_SOURCE_DIR)
+        try:
+            changed = rewrite_symlink_target_prefix(
+                [movies_dir, tv_dir], old_source_dir, source_dir
+            )
+            if changed:
+                print(f"[orbit] migrated {changed} legacy media symlink(s)")
+        except (OSError, ValueError) as error:
+            print(f"[orbit] media symlink migration skipped: {error}", file=sys.stderr)
 
     plex_path = os.path.join(
         os.environ.get("PD_ROOT", "/app/plex_debrid"),

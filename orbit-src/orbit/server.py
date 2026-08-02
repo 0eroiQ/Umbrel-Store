@@ -126,8 +126,9 @@ def _sync_legacy_settings(settings: dict):
         if str(settings.get(f"scraper_{name}", "true" if name == "torrentio" else "false")).lower()
         in {"1", "true", "yes", "on"}
     ]
-    movies_dir = os.environ.get("ORBIT_MOVIES_DIR", "/downloads/vortexo/Movies")
-    tv_dir = os.environ.get("ORBIT_TV_DIR", "/downloads/vortexo/TV")
+    downloads_dir = os.environ.get("PD_DOWNLOADS_DIR", "/zeroq-media")
+    movies_dir = os.environ.get("ORBIT_MOVIES_DIR", "/zeroq-media/vortexo/Movies")
+    tv_dir = os.environ.get("ORBIT_TV_DIR", "/zeroq-media/vortexo/TV")
     legacy.update({
         "Debrid Services": [provider],
         "TorBox API Key": settings.get("torbox_api_key", ""),
@@ -157,7 +158,7 @@ def _sync_legacy_settings(settings: dict):
         "Orionoid API Key": settings.get("orionoid_api_key", ""),
         "Versions": legacy.get("Versions") or [DEFAULT_VERSION],
         "Symlinker Enabled": "true",
-        "Symlinker Mount Path": "/downloads",
+        "Symlinker Mount Path": downloads_dir,
         "Symlinker Movies Library": movies_dir,
         "Symlinker TV Library": tv_dir,
         "Show Menu on Startup": "false",
