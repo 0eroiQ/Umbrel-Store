@@ -152,15 +152,14 @@ def main() -> int:
         }))
         return 4
     libraries = content.classes.library()
-    if not libraries:
+    library_factory = next(iter(libraries), None)
+    if library_factory is None:
         print(json.dumps({"ok": False, "detail": "Configure a Plex or Trakt library service"}))
         return 4
-    library = libraries[0]()
-    # On fresh installs the Plex library may be empty. plex_debrid still
-    # downloads fine with an empty library list — it just skips duplicate
-    # checking. Allow this so the first download can seed the library.
-    if len(library) == 0:
-        library = []
+    # Empty is a valid, readable library state on a fresh install. The first
+    # acquisition seeds it; a non-empty Movies section does not require Series
+    # content (and vice versa).
+    library = library_factory() or []
 
     if library and job.get("source") == "series-monitor" and item.complete(library):
         print(json.dumps({
@@ -170,7 +169,7 @@ def main() -> int:
         }))
         return 0
 
-    item.download(library=[] if scope is not None or not library else library)
+    item.download(library=[] if scope is not None else library)
     releases = getattr(item, "downloaded_releases", [])
     if not releases:
         print(json.dumps({"ok": False, "detail": "No suitable cached release was acquired"}))

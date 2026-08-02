@@ -194,8 +194,13 @@ function libraryStats(stats = {}) {
   `).join("");
 }
 
-function libraryCards(items) {
-  if (!items.length) return '<div class="empty-state library-empty">No titles match these filters.</div>';
+function libraryCards(items, emptyLibrary = false) {
+  if (!items.length) {
+    const message = emptyLibrary
+      ? "Your Plex library is empty. Orbit is ready for your first movie or series."
+      : "No titles match these filters.";
+    return `<div class="empty-state library-empty">${message}</div>`;
+  }
   return items.map(item => `
     <article class="media-card" tabindex="0" role="button" data-library-id="${item.id}" aria-label="View ${esc(item.title)} details">
       <div class="media-poster">
@@ -244,7 +249,7 @@ async function loadLibrary(append = false) {
     libraryState.items.push(...data.items);
     libraryState.total = data.stats?.filtered || 0;
     root.className = `media-library-${libraryState.view}`;
-    root.innerHTML = libraryCards(libraryState.items);
+    root.innerHTML = libraryCards(libraryState.items, (data.stats?.total || 0) === 0);
     bindPosterFallbacks();
     $("#library-stats").innerHTML = libraryStats(data.stats);
     $("#library-result-count").textContent = `Showing ${libraryState.items.length.toLocaleString()} of ${libraryState.total.toLocaleString()}`;
