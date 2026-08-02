@@ -307,6 +307,27 @@ def scan_plex_library(base_url: str, token: str, section_ids: list[str]) -> list
     return items
 
 
+def plex_library_sections(base_url: str, token: str) -> list[dict]:
+    """Return Plex section types and the paths visible inside Plex itself."""
+    root = _plex_xml(base_url, token, "/library/sections")
+    sections = []
+    for node in root.findall("./Directory"):
+        section_id = str(node.get("key") or "")
+        media_type = str(node.get("type") or "")
+        locations = [
+            str(location.get("path") or "")
+            for location in node.findall("./Location")
+            if location.get("path")
+        ]
+        if section_id and media_type in {"movie", "show"} and locations:
+            sections.append({
+                "section_id": section_id,
+                "media_type": media_type,
+                "locations": locations,
+            })
+    return sections
+
+
 def _plex_command(
     base_url: str,
     token: str,

@@ -6,6 +6,30 @@ from orbit import plex
 
 
 class PlexInventoryTests(unittest.TestCase):
+    def test_library_sections_include_paths_visible_inside_plex(self):
+        root = ET.fromstring("""
+        <MediaContainer>
+          <Directory key="1" type="movie" title="Movies">
+            <Location path="/zeroq-media/vortexo/Movies"/>
+          </Directory>
+          <Directory key="2" type="show" title="TV Shows">
+            <Location path="/zeroq-media/vortexo/TV"/>
+          </Directory>
+        </MediaContainer>
+        """)
+        with patch.object(plex, "_plex_xml", return_value=root):
+            sections = plex.plex_library_sections("http://plex", "token")
+        self.assertEqual(sections, [
+            {
+                "section_id": "1", "media_type": "movie",
+                "locations": ["/zeroq-media/vortexo/Movies"],
+            },
+            {
+                "section_id": "2", "media_type": "show",
+                "locations": ["/zeroq-media/vortexo/TV"],
+            },
+        ])
+
     def test_movie_versions_include_real_quality_and_ids(self):
         section = ET.fromstring("""
         <MediaContainer>

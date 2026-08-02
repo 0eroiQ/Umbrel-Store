@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from .integrations import IntegrationError, fetch_list, fetch_plex_watchlist
 from .link_repair import repair_broken_symlinks
-from .plex import refresh_plex_paths, scan_plex_library
+from .plex import plex_library_sections, refresh_plex_paths, scan_plex_library
 from .store import Store
 
 
@@ -205,12 +205,41 @@ class Coordinator:
         settings = settings or self.store.get_settings(reveal_secrets=True)
         if not self.mount_is_healthy():
             return []
+        if not settings.get("plex_url") or not settings.get("plex_token"):
+            return []
+        configured_ids = set(self._section_ids(settings))
+        try:
+            sections = plex_library_sections(
+                settings["plex_url"], settings["plex_token"]
+            )
+        except IntegrationError:
+            return []
+        roots = {
+            "movie": os.environ.get("ORBIT_MOVIES_DIR", "/downloads/vortexo/Movies"),
+            "show": os.environ.get("ORBIT_TV_DIR", "/downloads/vortexo/TV"),
+        }
         section_paths = []
         for media_type, folder_path in media_paths:
-            section_ids = self.store.plex_section_ids(media_type) or self._section_ids(settings)
-            for section_id in section_ids:
-                section_paths.append((section_id, folder_path))
-        if not section_paths or not settings.get("plex_url") or not settings.get("plex_token"):
+            local_root = os.path.abspath(roots[media_type])
+            candidate = os.path.abspath(folder_path)
+            try:
+                relative = os.path.relpath(candidate, local_root)
+            except ValueError:
+                continue
+            if relative == ".." or relative.startswith(".." + os.sep):
+                continue
+            for section in sections:
+                if section["media_type"] != media_type:
+                    continue
+                if configured_ids and section["section_id"] not in configured_ids:
+                    continue
+                for plex_root in section["locations"]:
+                    plex_path = (
+                        plex_root if relative == "."
+                        else os.path.join(plex_root, relative)
+                    )
+                    section_paths.append((section["section_id"], plex_path))
+        if not section_paths:
             return []
         return refresh_plex_paths(
             settings["plex_url"], settings["plex_token"], section_paths
