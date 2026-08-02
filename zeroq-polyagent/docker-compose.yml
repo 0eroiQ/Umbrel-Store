@@ -9,7 +9,7 @@ services:
 
   server:
     # Immutable multi-architecture 1.1.0 image (live-trading code, paper by default).
-    image: ghcr.io/zeroq-bit/polyagent:2.5.0@sha256:f010e343a6706379953c0aa15bcb28391b1542a7b86bdbd7ae6b0ef9df528301
+    image: ghcr.io/zeroq-bit/polyagent:2.6.0@sha256:d13a77e4c562890c7a5cb71e112e2a7d01e28dd39cf8eca4e76c3b96f6f423f6
     restart: on-failure
     stop_grace_period: 30s
     user: '1001:1001'
