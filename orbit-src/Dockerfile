@@ -1,4 +1,4 @@
-FROM ghcr.io/zeroq-bit/plex_debrid:main@sha256:2f30c4b3842fa49dedf729820e9ee4960871af4ba3b9a6eef202b0152ab1173c
+FROM ghcr.io/zeroq-bit/plex_debrid:main@sha256:31a73be14c251c4773a34ca6d17d91e85a5fdc193823ad76a165617c87ef841c
 
 COPY orbit /app/orbit
 COPY entrypoint.sh /app/orbit-entrypoint.sh

@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-orbit
 category: media
 name: Orbit
-version: "0.6.6"
+version: "0.6.7"
 tagline: Search, automate, mount, and deliver debrid media to Plex
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-orbit/icon.png
 description: >-
@@ -41,11 +41,9 @@ defaultPassword: ""
 torOnly: false
 permissions: []
 releaseNotes: >-
-  Adds AllDebrid as a third debrid provider alongside TorBox and Real-Debrid.
-  AllDebrid uses its native WebDAV endpoint (webdav.debrid.it) with rclone —
-  no zurg required. The bundled plex_debrid engine already supports AllDebrid
-  natively, so this release wires up the settings model, mount configuration,
-  and UI dropdown. TorBox-specific link repair now skips silently for non-TorBox
-  providers.
+  Fixes fresh installations with empty media libraries. Orbit now safely creates
+  missing Movies and TV folders, accepts fully empty, Movies-only, and Series-only
+  Plex libraries, continues scanning when one media section is empty, and shows a
+  first-run empty state instead of failing or requiring placeholder media.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store
