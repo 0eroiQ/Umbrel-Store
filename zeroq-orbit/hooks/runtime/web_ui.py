@@ -44,8 +44,8 @@ STARTUP_SAFETY_ERROR = None
 # (env_key, label, control, default, help)
 CONFIG_SCHEMA = [
     ("DEBRID_MODE", "Debrid Mode", "select", "webdav",
-     {"options": ["webdav", "zurg", "alldebrid"],
-      "help": "webdav = TorBox direct (recommended). zurg = Real-Debrid via zurg. alldebrid = AllDebrid WebDAV."}),
+     {"options": ["webdav", "zurg", "alldebrid", "premiumize"],
+      "help": "webdav = TorBox direct. zurg = Real-Debrid. alldebrid = AllDebrid WebDAV. premiumize = Premiumize WebDAV."}),
     # TorBox WebDAV
     ("DEBRID_WEBDAV_URL", "WebDAV URL", "text", "https://webdav.torbox.app",
      {"show_if": {"DEBRID_MODE": "webdav"}, "help": "TorBox's WebDAV endpoint."}),
@@ -67,6 +67,13 @@ CONFIG_SCHEMA = [
     ("DEBRID_ALLDEBRID_APIKEY", "AllDebrid API Key", "password", "",
      {"show_if": {"DEBRID_MODE": "alldebrid"},
       "help": "AllDebrid API key (alldebrid.com → Settings → API key). Used as the WebDAV username."}),
+    # Premiumize WebDAV
+    ("DEBRID_PREMIUMIZE_APIKEY", "Premiumize API Key", "password", "",
+     {"show_if": {"DEBRID_MODE": "premiumize"},
+      "help": "Premiumize API key (premiumize.me → Account). Used as WebDAV password."}),
+    ("DEBRID_PREMIUMIZE_CUSTOMERID", "Premiumize Customer ID", "text", "",
+     {"show_if": {"DEBRID_MODE": "premiumize"},
+      "help": "Premiumize customer ID. Used as WebDAV username."}),
     # Rclone tuning. Persistent file caching is intentionally disabled: the
     # debrid provider remains the source of truth and media streams directly.
     (CACHE_MODE_KEY, "Persistent Media Cache", "select", "off",
@@ -322,6 +329,15 @@ def write_rclone_config():
         obscured = _rclone_obscure("eeeee")
         body = ("[debrid]\ntype = webdav\nurl = https://webdav.debrid.it/\nvendor = other\n"
                 "user = {}\npass = {}\n".format(apikey, obscured))
+    elif mode == "premiumize":
+        # Premiumize WebDAV: customer_id as username, API key as password.
+        apikey = cfg.get("DEBRID_PREMIUMIZE_APIKEY", "")
+        customer_id = cfg.get("DEBRID_PREMIUMIZE_CUSTOMERID", "")
+        if not apikey:
+            return False
+        obscured = _rclone_obscure(apikey)
+        body = ("[debrid]\ntype = webdav\nurl = https://webdav.premiumize.me\nvendor = other\n"
+                "user = {}\npass = {}\n".format(customer_id, obscured))
     else:
         user = cfg.get("DEBRID_WEBDAV_USER", "")
         password = cfg.get("DEBRID_WEBDAV_PASS", "")
@@ -503,6 +519,18 @@ class Mount:
                 )
                 if not credential_result.get("valid"):
                     return False, "AllDebrid WebDAV test failed: {}".format(
+                        credential_result.get("error") or "authentication failed")
+            elif mode == "premiumize":
+                if not write_rclone_config():
+                    return False, "missing Premiumize API key"
+                credential_result = test_webdav(
+                    cfg.get("DEBRID_PREMIUMIZE_CUSTOMERID", ""),
+                    cfg.get("DEBRID_PREMIUMIZE_APIKEY", ""),
+                    "https://webdav.premiumize.me",
+                    "other",
+                )
+                if not credential_result.get("valid"):
+                    return False, "Premiumize WebDAV test failed: {}".format(
                         credential_result.get("error") or "authentication failed")
             else:
                 if not write_rclone_config():
@@ -771,6 +799,8 @@ def _is_configured():
         return bool(cfg.get("DEBRID_ZURG_TOKEN"))
     if mode == "alldebrid":
         return bool(cfg.get("DEBRID_ALLDEBRID_APIKEY"))
+    if mode == "premiumize":
+        return bool(cfg.get("DEBRID_PREMIUMIZE_APIKEY"))
     return bool(cfg.get("DEBRID_WEBDAV_USER") and cfg.get("DEBRID_WEBDAV_PASS"))
 
 
