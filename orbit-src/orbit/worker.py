@@ -131,8 +131,8 @@ class Coordinator:
     def verify_library_handoffs(self):
         """Promote requests once their canonical library entry is visible."""
         roots = {
-            "movie": os.environ.get("ORBIT_MOVIES_DIR", "/downloads/vortexo/Movies"),
-            "show": os.environ.get("ORBIT_TV_DIR", "/downloads/vortexo/TV"),
+            "movie": os.environ.get("ORBIT_MOVIES_DIR", "/zeroq-media/vortexo/Movies"),
+            "show": os.environ.get("ORBIT_TV_DIR", "/zeroq-media/vortexo/TV"),
         }
         pending = [item for item in self.store.list_requests(500) if item["status"] == "library_pending"]
         ready_paths = []
@@ -215,8 +215,8 @@ class Coordinator:
         except IntegrationError:
             return []
         roots = {
-            "movie": os.environ.get("ORBIT_MOVIES_DIR", "/downloads/vortexo/Movies"),
-            "show": os.environ.get("ORBIT_TV_DIR", "/downloads/vortexo/TV"),
+            "movie": os.environ.get("ORBIT_MOVIES_DIR", "/zeroq-media/vortexo/Movies"),
+            "show": os.environ.get("ORBIT_TV_DIR", "/zeroq-media/vortexo/TV"),
         }
         section_paths = []
         for media_type, folder_path in media_paths:
@@ -306,8 +306,8 @@ class Coordinator:
         except (TypeError, ValueError):
             max_per_run = 10
         roots = {
-            "movie": os.environ.get("ORBIT_MOVIES_DIR", "/downloads/vortexo/Movies"),
-            "show": os.environ.get("ORBIT_TV_DIR", "/downloads/vortexo/TV"),
+            "movie": os.environ.get("ORBIT_MOVIES_DIR", "/zeroq-media/vortexo/Movies"),
+            "show": os.environ.get("ORBIT_TV_DIR", "/zeroq-media/vortexo/TV"),
         }
         inventory_scopes = []
         unavailable_paths: set[str] = set()
@@ -331,7 +331,7 @@ class Coordinator:
                     inventory_scopes.append((item, *scope))
         repaired = repair_broken_symlinks(
             settings.get("torbox_api_key", ""),
-            os.environ.get("PD_DOWNLOADS_DIR", "/downloads"),
+            os.environ.get("PD_DOWNLOADS_DIR", "/zeroq-media"),
             roots,
             max_repairs=max_per_run * 10,
             candidate_links=unavailable_paths,

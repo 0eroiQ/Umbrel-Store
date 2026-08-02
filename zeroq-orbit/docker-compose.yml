@@ -20,18 +20,19 @@ services:
       PD_CONFIG_DIR: /config
       PD_LOG_DIR: /logs
       PD_ROOT: /app/plex_debrid
-      PD_DOWNLOADS_DIR: /downloads
-      PD_VORTEXO_SOURCE_DIR: /downloads/.vortexo-source
-      PD_LIBRARY_MOVIES_DIR: /downloads/vortexo/Movies
-      PD_LIBRARY_TV_DIR: /downloads/vortexo/TV
-      ORBIT_MOVIES_DIR: /downloads/vortexo/Movies
-      ORBIT_TV_DIR: /downloads/vortexo/TV
+      PD_DOWNLOADS_DIR: /zeroq-media
+      PD_VORTEXO_SOURCE_DIR: /zeroq-media/.vortexo-source
+      PD_LIBRARY_MOVIES_DIR: /zeroq-media/vortexo/Movies
+      PD_LIBRARY_TV_DIR: /zeroq-media/vortexo/TV
+      ORBIT_LIBRARY_ROOT: /zeroq-media/vortexo
+      ORBIT_MOVIES_DIR: /zeroq-media/vortexo/Movies
+      ORBIT_TV_DIR: /zeroq-media/vortexo/TV
     volumes:
       - ${APP_DATA_DIR}/data:/data
       - ${APP_DATA_DIR}/config:/config
       - ${APP_DATA_DIR}/logs:/logs
-      - ${UMBREL_ROOT}/data/zeroq-media:/downloads:rslave,ro
-      - ${UMBREL_ROOT}/data/zeroq-media/vortexo:/downloads/vortexo
+      - ${UMBREL_ROOT}/data/zeroq-media:/zeroq-media:rslave,ro
+      - ${UMBREL_ROOT}/data/zeroq-media/vortexo:/zeroq-media/vortexo
     networks:
       default:
         aliases:
