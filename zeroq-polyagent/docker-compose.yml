@@ -8,8 +8,8 @@ services:
       PROXY_AUTH_ADD: 'true'
 
   server:
-    # Immutable multi-architecture 3.3.1 image. Live-money deployment lock stays disabled.
-    image: ghcr.io/zeroq-bit/polyagent:3.3.1@sha256:b717944953a1ee04ffc75c59456a82bd00d87d426b068745a85e2dae0e112f03
+    # Immutable multi-architecture 3.3.2 image. Live-money deployment lock stays disabled.
+    image: ghcr.io/zeroq-bit/polyagent:3.3.2@sha256:5cf28956ab69c81632c13e3a9ccafc3a1e64dfe9d183cbfb942f47e14d35e31d
     restart: on-failure
     stop_grace_period: 30s
     user: '1001:1001'
