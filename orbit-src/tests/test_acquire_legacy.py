@@ -1,4 +1,6 @@
 import builtins
+import os
+import tempfile
 import unittest
 from types import SimpleNamespace
 
@@ -6,8 +8,10 @@ from orbit.acquire_legacy import (
     acquisition_was_handed_off,
     apply_quality_profile,
     library_has_media_type,
+    install_alldebrid_compatibility,
     load_engine_settings,
     prepare_item_metadata,
+    provider_quota_failure,
     replacement_scope,
     restrict_replacement_item,
 )
@@ -44,6 +48,65 @@ class FakePlex:
 
 
 class AcquireLegacyTests(unittest.TestCase):
+    def test_alldebrid_compatibility_uses_supported_upload_for_selected_release(self):
+        calls = []
+        service = SimpleNamespace(
+            short="AD",
+            post=lambda url, data: (
+                calls.append((url, data))
+                or SimpleNamespace(data=SimpleNamespace(magnets=[SimpleNamespace(id=42, ready=True)]))
+            ),
+            ui_print=lambda message: calls.append(message),
+        )
+        install_alldebrid_compatibility(service)
+        invalid = SimpleNamespace(hash="short", cached=[], download=["bad"], title="Bad")
+        selected = SimpleNamespace(
+            hash="a" * 40, cached=[], download=["magnet:?xt=urn:btih:" + "a" * 40],
+            title="Selected Movie",
+        )
+        element = SimpleNamespace(Releases=[invalid, selected])
+
+        service.check(element)
+        self.assertEqual(element.Releases, [selected])
+        self.assertEqual(selected.cached, ["AD"])
+        self.assertTrue(service.download(element))
+        self.assertEqual(calls[0], (
+            "https://api.alldebrid.com/v4/magnet/upload",
+            {"magnets[]": selected.download[0]},
+        ))
+
+    def test_alldebrid_obsolete_endpoint_pauses_instead_of_burning_queue(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "plex_debrid.log")
+            with open(path, "wb") as handle:
+                handle.write(
+                    b"[alldebrid] error 404: Endpoint doesn't exist\n"
+                )
+            result = provider_quota_failure(path)
+
+        self.assertTrue(result["retryable"])
+        self.assertEqual(result["retry_after_seconds"], 1800)
+        self.assertIn("obsolete API endpoint", result["detail"])
+
+    def test_provider_quota_failure_reads_only_current_acquisition_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "plex_debrid.log")
+            with open(path, "wb") as handle:
+                handle.write(b"[premiumize] error: Your space is full!\n")
+            offset = os.path.getsize(path)
+            self.assertIsNone(provider_quota_failure(path, offset))
+
+            with open(path, "ab") as handle:
+                handle.write(
+                    b'[premiumize] error: {"code":"account_limit_reached"}\n'
+                    b"[premiumize] error: Your space is full! Please delete old files first!\n"
+                )
+            result = provider_quota_failure(path, offset)
+
+        self.assertTrue(result["retryable"])
+        self.assertEqual(result["retry_after_seconds"], 1800)
+        self.assertIn("Premiumize storage is full", result["detail"])
+
     def test_debrid_handoff_remains_successful_while_mount_is_delayed(self):
         movie = SimpleNamespace(
             existing_releases=["Cabin.Fever.2002.1080p"],

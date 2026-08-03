@@ -66,6 +66,16 @@ function mountError(mount = {}) {
   return mount.message || mount.last_error || mount.storage_safety_error || mount.error || "Mount needs attention";
 }
 
+function mountProviderName(mount = {}) {
+  const mode = String(mount.mode || document.forms["settings-form"]?.elements["debrid_mode"]?.value || "webdav");
+  return {
+    webdav: "TorBox",
+    zurg: "Real-Debrid",
+    alldebrid: "AllDebrid",
+    premiumize: "Premiumize",
+  }[mode] || "Debrid";
+}
+
 function showMountStatus(mount = {}) {
   const mounted = !!mount.mounted;
   const message = mounted ? "Mounted" : mountError(mount);
@@ -74,7 +84,7 @@ function showMountStatus(mount = {}) {
   pill.className = `system-pill ${mounted ? "good" : "bad"}`;
   pill.querySelector("span").textContent = mounted ? "System operational" : message;
   const detail = $("#mount-message");
-  if (detail) detail.textContent = mounted ? "TorBox mount is online" : message;
+  if (detail) detail.textContent = mounted ? `${mountProviderName(mount)} mount is online` : message;
 }
 
 async function loadDashboard() {

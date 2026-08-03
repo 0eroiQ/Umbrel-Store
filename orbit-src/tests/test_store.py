@@ -1,5 +1,6 @@
 import os
 import tempfile
+import time
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -172,6 +173,31 @@ class StoreTests(unittest.TestCase):
         current = self.store.list_requests()[0]
         self.assertEqual(current["id"], request["id"])
         self.assertEqual(current["status"], "ready")
+
+    def test_provider_quota_error_requeues_request_and_pauses_acquisition(self):
+        request, _ = self.store.add_request({
+            "media_type": "movie", "title": "Hearts Beat Loud", "tmdb_id": 470333,
+        })
+        coordinator = Coordinator(self.store, self.temp.name)
+        completed = SimpleNamespace(
+            returncode=7,
+            stdout=(
+                '{"ok":false,"retryable":true,"retry_after_seconds":1800,'
+                '"detail":"Premiumize storage is full"}\n'
+            ),
+            stderr="",
+        )
+        with patch.dict(os.environ, {"ORBIT_ACQUIRE_COMMAND": "acquire"}), \
+                patch("orbit.worker.subprocess.run", return_value=completed) as run:
+            coordinator.process_one()
+            coordinator.process_one()
+
+        current = self.store.list_requests()[0]
+        self.assertEqual(current["id"], request["id"])
+        self.assertEqual(current["status"], "queued")
+        self.assertIn("Premiumize storage is full", current["status_detail"])
+        self.assertGreater(coordinator.acquisition_blocked_until, time.monotonic())
+        self.assertEqual(run.call_count, 1)
 
     def test_empty_library_handoff_expires_but_can_recover_later(self):
         movies = os.path.join(self.temp.name, "Movies")
