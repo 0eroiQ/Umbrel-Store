@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-polyagent
 category: finance
 name: CryptoAgent
-version: '3.3.4'
+version: '3.3.5'
 tagline: Self-hosted AI crypto trading bot — 6 bots, adaptive learning, Binance
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
 description: >-
@@ -28,10 +28,10 @@ defaultPassword: ''
 torOnly: false
 permissions: []
 releaseNotes: >-
-  v3.3.4 keeps confirmed zero-fill Testnet FOK expiry, cancellation, and rejection outcomes
-  retryable instead of arming the persistent emergency stop. Partial, non-zero, unknown,
-  unreconciled, and managed-exit balance-mismatch outcomes remain fail-closed. An emergency stop
-  already stored by an earlier version must be resumed once after updating. Live-money execution
-  remains deployment-locked.
+  v3.3.5 adds a live public Binance BTC reference beside the mode badge and displays it in the
+  dashboard browser's regional currency, including AUD for Australian locales. Regional conversion
+  uses cached ECB reference rates and falls back visibly to USD if FX is unavailable. The display
+  is isolated from strategy, risk, accounting, and order execution. Testnet and live-money safety
+  controls are unchanged, and live-money execution remains deployment-locked.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store
