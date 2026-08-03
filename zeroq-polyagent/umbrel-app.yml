@@ -2,8 +2,8 @@ manifestVersion: 1.1
 id: zeroq-polyagent
 category: finance
 name: CryptoAgent
-version: '3.3.6'
-tagline: Self-hosted Binance Testnet trading — 6 bots, scanner, risk controls
+version: '3.3.7'
+tagline: Self-hosted Binance paper and Testnet trading with strict live isolation
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
 description: >-
   CryptoAgent is a self-hosted Binance Spot trading system with six automatic strategy
@@ -11,10 +11,13 @@ description: >-
   and persistent risk controls.
 
   Paper mode simulates orders. Binance Spot Testnet mode uses exchange test funds and
-  records exchange order references, fills, positions, and restart-recovery evidence.
-  Live-market execution remains protected by a deployment-level interlock that is disabled
-  in this Umbrel package and cannot be bypassed from the dashboard. No profitability claim
-  forms part of this release.
+  records exchange order references, fills, positions, and restart-recovery evidence. Scanner
+  and execution candidates must also be active on production Binance Spot, and completed-trade
+  performance survives restarts.
+
+  The normal app is technically Testnet-only: it rejects live credentials, production Binance
+  order endpoints, and live mode. Real-money execution is not included in this Umbrel package.
+  No profitability claim forms part of this release.
 developer: ZeroQ
 website: https://github.com/ZeroQ-bit/Umbrel-Store/tree/master/zeroq-polyagent
 dependencies: []
@@ -28,10 +31,10 @@ defaultPassword: ''
 torOnly: false
 permissions: []
 releaseNotes: >-
-  v3.3.6 makes the live BTC reference currency timezone-aware. Umbrel browsers that report a generic
-  US locale now use the device's local IANA timezone, so Australia/Perth and other Australia zones
-  display the converted BTC price in AUD. Locale fallback and visible USD fallback remain available.
-  The display is isolated from strategy, risk, accounting, and order execution. Testnet and
-  live-money safety controls are unchanged, and live-money execution remains deployment-locked.
+  v3.3.7 removes Testnet-only symbols such as COSUSDT from scanner and execution candidates by
+  requiring production Spot TRADING eligibility. Completed-trade performance now survives restarts.
+  The normal app rejects and purges live credentials, refuses production Binance order endpoints,
+  and removes its direct live-order path. Paper and Spot Testnet remain available; real-money
+  execution is not included. Existing settings and Testnet positions persist through the update.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store

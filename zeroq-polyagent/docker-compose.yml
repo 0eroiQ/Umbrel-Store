@@ -8,8 +8,8 @@ services:
       PROXY_AUTH_ADD: 'true'
 
   server:
-    # Immutable multi-architecture 3.3.6 image. Live-money deployment lock stays disabled.
-    image: ghcr.io/zeroq-bit/polyagent:3.3.6@sha256:dcb86ea17a25d538f7160ce7f0baa285927aa71c1b31f9ce4442d145e5c47c24
+    # Immutable multi-architecture 3.3.7 image. The normal server is Testnet-only in code.
+    image: ghcr.io/zeroq-bit/polyagent:3.3.7@sha256:97470c727a6a776a028ef6610a143300dc9fe3e89ef83265a137ad80aa32d660
     restart: on-failure
     stop_grace_period: 30s
     user: '1001:1001'
@@ -24,7 +24,6 @@ services:
       POLYAGENT_DB_KEY_FILE: /run/secrets/db_key
       POLYAGENT_BOOTSTRAP_TOKEN_FILE: /run/secrets/bootstrap_token
       POLYAGENT_SESSION_SECRET_FILE: /run/secrets/session_secret
-      POLYAGENT_ENABLE_LIVE_TRADING: 'false'
     volumes:
       - ${APP_DATA_DIR}/data:/app/data
       - ${APP_DATA_DIR}/secrets/db_key:/run/secrets/db_key:ro
