@@ -101,7 +101,7 @@
       <form id="list-form" class="panel form-panel hidden">
         <div class="field-row"><label>List name<input name="name" required placeholder="New 4K releases"></label><label>Source<select name="kind"><option value="mdblist">MDBList</option><option value="trakt">Trakt</option></select></label></div>
         <label>List URL<input name="url" type="url" required placeholder="https://mdblist.com/lists/user/list-name"></label>
-        <div class="field-row"><label>Quality profile<select name="profile"><option value="best">Best available</option><option value="4k">Prefer 4K</option><option value="1080p">1080p</option></select></label><label>Maximum per sync<input name="max_items" type="number" min="1" max="1000" value="100"></label></div>
+        <div class="field-row"><label>Quality profile<select name="profile"><option value="best">Best available</option><option value="4k">Prefer 4K</option><option value="1080p">1080p</option></select></label><label>Maximum per sync<input name="max_items" type="number" min="1" max="70000" value="100"><span>MDBList imports use safe 1,000-item pages and support up to 70,000 titles.</span></label></div>
         <div class="form-actions"><button type="button" class="ghost" id="cancel-list">Cancel</button><button class="primary" id="connect-list">Connect list</button></div>
       </form>
       <div id="list-sources" class="cards empty-state">No automatic lists connected yet.</div>

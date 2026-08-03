@@ -525,6 +525,14 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def run():
+    recovered = store.recover_startup_states()
+    if recovered["interrupted"] or recovered["caught_up"]:
+        print(
+            "[orbit] startup request recovery: "
+            f"{recovered['interrupted']} interrupted, "
+            f"{recovered['caught_up']} caught-up series",
+            flush=True,
+        )
     coordinator.start()
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"Orbit listening on :{PORT}", flush=True)

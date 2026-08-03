@@ -54,6 +54,51 @@ class IntegrationTests(unittest.TestCase):
             [("movie", "Dune"), ("show", "Severance")],
         )
 
+    def test_mdblist_cursor_paginates_more_than_ten_thousand_items(self):
+        def page(start, size, next_cursor="", has_more=False):
+            return {
+                "items": [
+                    {
+                        "mediatype": "movie", "title": f"Movie {item_id}",
+                        "tmdb_id": item_id,
+                    }
+                    for item_id in range(start, start + size)
+                ],
+                "pagination": {
+                    "has_more": has_more,
+                    "next_cursor": next_cursor or None,
+                },
+            }
+
+        responses = [
+            page(start, 1000, f"cursor-{index + 1}", True)
+            for index, start in enumerate(range(1, 10001, 1000))
+        ]
+        responses.append(page(10001, 25))
+        with patch.object(
+            integrations, "_json_request", side_effect=responses
+        ) as request:
+            items = integrations.fetch_mdblist(
+                "https://mdblist.com/lists/example/boxsets", "secret", 10025
+            )
+
+        self.assertEqual(len(items), 10025)
+        self.assertEqual(len(request.call_args_list), 11)
+        first_query = integrations.urllib.parse.parse_qs(
+            integrations.urllib.parse.urlparse(request.call_args_list[0].args[0]).query
+        )
+        second_query = integrations.urllib.parse.parse_qs(
+            integrations.urllib.parse.urlparse(request.call_args_list[1].args[0]).query
+        )
+        last_query = integrations.urllib.parse.parse_qs(
+            integrations.urllib.parse.urlparse(request.call_args_list[-1].args[0]).query
+        )
+        self.assertEqual(first_query["limit"], ["1000"])
+        self.assertNotIn("cursor", first_query)
+        self.assertEqual(second_query["cursor"], ["cursor-1"])
+        self.assertEqual(last_query["limit"], ["25"])
+        self.assertEqual(last_query["cursor"], ["cursor-10"])
+
     def test_trakt_nested_items_are_normalised(self):
         with patch.object(integrations, "_json_request", return_value=[{
             "show": {"title": "Severance", "year": 2022, "ids": {"tmdb": 95396, "imdb": "tt11280740"}}

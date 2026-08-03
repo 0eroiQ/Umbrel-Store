@@ -18,7 +18,8 @@ library organization, and Plex refresh into one visible pipeline.
 - Optional series completion that fills missing aired episodes for shows already
   present in Plex while ignoring future episodes
 - Persistent SQLite request queue and event history
-- Plex Watchlist, MDBList, and Trakt imports that skip titles already in Plex
+- Plex Watchlist, MDBList, and Trakt imports that skip titles already in Plex;
+  MDBList cursor pagination supports collections up to 70,000 titles
 - Existing TorBox/Real-Debrid acquisition engine reused as an isolated worker
 - Existing WebDAV/zurg FUSE mount reused as a separate least-privilege service
 - One authenticated Orbit dashboard and one Umbrel app icon

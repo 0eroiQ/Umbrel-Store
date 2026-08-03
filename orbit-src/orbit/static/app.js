@@ -602,7 +602,7 @@ async function loadLists() {
       button.textContent = "Syncing…";
       try {
         const result = await api(`/api/lists/${button.dataset.sync}/sync`, {method: "POST", body: "{}"});
-        toast(`${result.added} new · ${result.skipped_existing || 0} already in Plex`);
+        toast(`${result.added} new · ${result.skipped_existing || 0} already in Plex · ${result.skipped_requested || 0} already requested`);
         loadLists();
         loadDashboard();
       } catch (error) {

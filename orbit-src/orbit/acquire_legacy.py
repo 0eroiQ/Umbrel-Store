@@ -224,6 +224,7 @@ def main() -> int:
     if library and job.get("source") == "series-monitor" and item.complete(library):
         print(json.dumps({
             "ok": True,
+            "status": "ready",
             "detail": "Series is caught up; future unaired episodes were ignored",
             "paths": [],
         }))
