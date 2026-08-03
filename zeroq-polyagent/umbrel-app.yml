@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-polyagent
 category: finance
 name: CryptoAgent
-version: '3.3.2'
+version: '3.3.3'
 tagline: Self-hosted AI crypto trading bot — 6 bots, adaptive learning, Binance
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
 description: >-
@@ -28,10 +28,9 @@ defaultPassword: ''
 torOnly: false
 permissions: []
 releaseNotes: >-
-  v3.3.2 adds tabbed settings for Trading, Testnet Risk Controls, Spot Testnet, and Live
-  Account. Testnet Risk Controls persist order value, daily-loss stop, stop-loss, loss-streak
-  cooldown, drawdown and per-symbol exposure limits, trade-speed limit, and excluded symbols.
-  The Testnet canary remains capped at one position, $10 per order, and $5 daily loss. Live-money
-  execution remains deployment-locked.
+  v3.3.3 automatically returns the Risk Guardian to SAFE when a timed losing-streak cooldown
+  expires, resets the completed loss streak, and heals an already-expired warning after restart.
+  The dashboard now shows the automatic resume time. Emergency stops, daily-loss stops, and
+  drawdown circuit breakers remain fail-closed; live-money execution remains deployment-locked.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store
