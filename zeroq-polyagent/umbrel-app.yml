@@ -2,12 +2,12 @@ manifestVersion: 1.1
 id: zeroq-polyagent
 category: finance
 name: CryptoAgent
-version: '3.3.5'
-tagline: Self-hosted AI crypto trading bot — 6 bots, adaptive learning, Binance
+version: '3.3.6'
+tagline: Self-hosted Binance Testnet trading — 6 bots, scanner, risk controls
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
 description: >-
   CryptoAgent is a self-hosted Binance Spot trading system with six automatic strategy
-  bots, scanner-ranked symbol selection, adaptive learning, encrypted SQLCipher storage,
+  bots, scanner-ranked symbol selection, performance tracking, encrypted SQLCipher storage,
   and persistent risk controls.
 
   Paper mode simulates orders. Binance Spot Testnet mode uses exchange test funds and
@@ -28,10 +28,10 @@ defaultPassword: ''
 torOnly: false
 permissions: []
 releaseNotes: >-
-  v3.3.5 adds a live public Binance BTC reference beside the mode badge and displays it in the
-  dashboard browser's regional currency, including AUD for Australian locales. Regional conversion
-  uses cached ECB reference rates and falls back visibly to USD if FX is unavailable. The display
-  is isolated from strategy, risk, accounting, and order execution. Testnet and live-money safety
-  controls are unchanged, and live-money execution remains deployment-locked.
+  v3.3.6 makes the live BTC reference currency timezone-aware. Umbrel browsers that report a generic
+  US locale now use the device's local IANA timezone, so Australia/Perth and other Australia zones
+  display the converted BTC price in AUD. Locale fallback and visible USD fallback remain available.
+  The display is isolated from strategy, risk, accounting, and order execution. Testnet and
+  live-money safety controls are unchanged, and live-money execution remains deployment-locked.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store
