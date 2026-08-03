@@ -37,6 +37,7 @@ class Coordinator:
         self.last_plex_poll = 0.0
         self.last_link_repair_poll = 0.0
         self.last_mount_reconcile_poll = 0.0
+        self.last_handoff_verify_poll = 0.0
         self.last_pending_scan_poll = 0.0
         self.link_repair_lock = threading.Lock()
         self.last_link_repair = {
@@ -129,7 +130,9 @@ class Coordinator:
         if time.monotonic() - self.last_mount_reconcile_poll >= 60:
             self.reconcile_mounted_media()
             self.last_mount_reconcile_poll = time.monotonic()
-        self.verify_library_handoffs()
+        if time.monotonic() - self.last_handoff_verify_poll >= 60:
+            self.verify_library_handoffs()
+            self.last_handoff_verify_poll = time.monotonic()
         if time.monotonic() - self.last_pending_scan_poll >= 15:
             self.scan_pending_library_paths()
             self.last_pending_scan_poll = time.monotonic()
@@ -156,7 +159,10 @@ class Coordinator:
             except json.JSONDecodeError:
                 result = {"ok": False, "detail": completed.stderr.strip() or last_line or "Acquisition failed"}
             if completed.returncode == 0 and result.get("ok"):
-                self.store.transition(job["id"], "library_pending", result.get("detail", "Added to debrid"))
+                state = result.get("status", "library_pending")
+                if state not in {"ready", "library_pending"}:
+                    state = "library_pending"
+                self.store.transition(job["id"], state, result.get("detail", "Added to debrid"))
             else:
                 self.store.transition(job["id"], "needs_attention", result.get("detail", "Acquisition failed"))
         except subprocess.TimeoutExpired:
@@ -168,36 +174,76 @@ class Coordinator:
             "movie": os.environ.get("ORBIT_MOVIES_DIR", "/zeroq-media/vortexo/Movies"),
             "show": os.environ.get("ORBIT_TV_DIR", "/zeroq-media/vortexo/TV"),
         }
-        pending = [
-            item for item in self.store.list_requests(500)
-            if item["status"] in {"library_pending", "needs_attention"}
-        ]
+        pending = self.store.list_handoff_candidates()
         ready_paths = []
         if not self.mount_is_healthy():
             return
-        for item in pending:
-            root = roots[item["media_type"]]
+        roots_entries = {}
+        for media_type, root in roots.items():
             try:
-                names = os.listdir(root)
+                roots_entries[media_type] = os.listdir(root)
             except OSError:
-                continue
-            tmdb_marker = f"{{tmdb-{item['tmdb_id']}}}" if item.get("tmdb_id") else ""
+                roots_entries[media_type] = []
+        by_tmdb = {}
+        by_title = {}
+        for item in pending:
+            media_type = item["media_type"]
+            if item.get("tmdb_id"):
+                by_tmdb.setdefault(
+                    (media_type, str(item["tmdb_id"])), []
+                ).append(item)
             title_key = re.sub(r"[^a-z0-9]+", "", item["title"].lower())
-            matching = [
-                name for name in names
-                if (tmdb_marker and tmdb_marker in name)
-                or (title_key and re.sub(r"[^a-z0-9]+", "", name.lower()).startswith(title_key))
-            ]
-            playable = any(
-                self._folder_has_playable_video(os.path.join(root, name))
-                for name in matching
-            )
-            if playable:
-                self.store.transition(
-                    item["id"], "ready",
-                    "Playable library link verified; Plex scan requested",
+            if title_key:
+                by_title.setdefault((media_type, title_key), []).append(item)
+        promoted = set()
+        for media_type, names in roots_entries.items():
+            root = roots[media_type]
+            for name in names:
+                candidates = []
+                tmdb = re.search(r"\{tmdb-(\d+)\}", name)
+                if tmdb:
+                    candidates.extend(by_tmdb.get((media_type, tmdb.group(1)), []))
+                display_name = re.sub(
+                    r"\s+\(\d{4}\)\s+\{(?:tmdb|tvdb)-\d+\}.*$", "", name
                 )
-                ready_paths.extend((item["media_type"], os.path.join(root, name)) for name in matching)
+                if display_name == name:
+                    display_name = re.sub(r"\s+\(\d{4}\)$", "", name)
+                title_key = re.sub(r"[^a-z0-9]+", "", display_name.lower())
+                candidates.extend(by_title.get((media_type, title_key), []))
+                unique = {item["id"]: item for item in candidates}
+                folder = os.path.join(root, name)
+                if not unique or not self._folder_has_playable_video(folder):
+                    continue
+                for item in unique.values():
+                    if item["id"] in promoted:
+                        continue
+                    self.store.transition(
+                        item["id"], "ready",
+                        "Playable library link verified; Plex scan requested",
+                    )
+                    promoted.add(item["id"])
+                ready_paths.append((media_type, folder))
+
+        try:
+            pending_timeout = max(
+                300, int(os.environ.get("ORBIT_LIBRARY_PENDING_TIMEOUT_SECONDS", "21600"))
+            )
+        except (TypeError, ValueError):
+            pending_timeout = 21600
+        now = datetime.now(timezone.utc)
+        for item in pending:
+            if item["id"] in promoted or item["status"] != "library_pending":
+                continue
+            try:
+                updated = datetime.fromisoformat(item["updated_at"])
+                age = (now - updated).total_seconds()
+            except (TypeError, ValueError):
+                continue
+            if age >= pending_timeout:
+                self.store.transition(
+                    item["id"], "needs_attention",
+                    "Mounted source did not appear before the handoff timeout",
+                )
         if ready_paths:
             self.refresh_plex_paths_if_healthy(ready_paths)
 
@@ -517,20 +563,16 @@ class Coordinator:
         settings = self.store.get_settings(reveal_secrets=True)
         try:
             items = fetch_list(source, settings)
-            added = 0
-            skipped_existing = 0
-            for item in items:
-                if self.store.match_plex_library(item):
-                    skipped_existing += 1
-                    continue
-                item["profile"] = source["profile"]
-                _, created = self.store.add_request(item, source=source["kind"], source_ref=str(source["id"]))
-                added += int(created)
+            imported = self.store.import_list_items(
+                items,
+                source=source["kind"],
+                source_ref=str(source["id"]),
+                profile=source["profile"],
+            )
             self.store.complete_list_sync(source_id)
             return {
                 "found": len(items),
-                "added": added,
-                "skipped_existing": skipped_existing,
+                **imported,
             }
         except IntegrationError as error:
             self.store.complete_list_sync(source_id, str(error))

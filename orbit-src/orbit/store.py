@@ -73,6 +73,8 @@ class Store:
                     detail TEXT NOT NULL DEFAULT '',
                     created_at TEXT NOT NULL
                 );
+                CREATE INDEX IF NOT EXISTS requests_status
+                    ON requests(status);
                 CREATE TABLE IF NOT EXISTS list_sources (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
@@ -160,10 +162,7 @@ class Store:
                 )
 
     def add_request(self, item: dict, source: str = "manual", source_ref: str = "") -> tuple[dict, bool]:
-        media_type = "show" if item.get("media_type") in ("tv", "show") else "movie"
-        tmdb_id = item.get("tmdb_id") or item.get("id")
-        imdb_id = item.get("imdb_id") or ""
-        media_key = f"tmdb:{media_type}:{tmdb_id}" if tmdb_id else f"imdb:{media_type}:{imdb_id}"
+        media_type, tmdb_id, imdb_id, media_key = self._request_identity(item)
         now = utc_now()
         with self._lock, self.connection() as db:
             # One title should enter the acquisition pipeline once even when it
@@ -204,6 +203,151 @@ class Store:
             )
             row = db.execute("SELECT * FROM requests WHERE id=?", (request_id,)).fetchone()
             return dict(row), True
+
+    @staticmethod
+    def _request_identity(item: dict) -> tuple[str, object, str, str]:
+        media_type = "show" if item.get("media_type") in ("tv", "show") else "movie"
+        tmdb_id = item.get("tmdb_id") or item.get("id")
+        imdb_id = str(item.get("imdb_id") or "")
+        media_key = (
+            f"tmdb:{media_type}:{tmdb_id}"
+            if tmdb_id else f"imdb:{media_type}:{imdb_id}"
+        )
+        return media_type, tmdb_id, imdb_id, media_key
+
+    def import_list_items(
+        self,
+        items: list[dict],
+        source: str,
+        source_ref: str,
+        profile: str,
+    ) -> dict:
+        """Import a large automatic list in one transaction.
+
+        Loading request and Plex identities once avoids opening two SQLite
+        connections per item, which made 10,000+ item lists impractical.
+        """
+        now = utc_now()
+        candidates = []
+        seen = set()
+        for item in items:
+            media_type, tmdb_id, imdb_id, media_key = self._request_identity(item)
+            if media_key in seen or (not tmdb_id and not imdb_id):
+                continue
+            seen.add(media_key)
+            candidates.append((item, media_type, tmdb_id, imdb_id, media_key))
+
+        added = 0
+        skipped_existing = 0
+        skipped_requested = 0
+        with self._lock, self.connection() as db:
+            request_keys = {
+                row[0] for row in db.execute("SELECT media_key FROM requests")
+            }
+            plex_rows = db.execute(
+                "SELECT media_type, tmdb_id, imdb_id, title, year FROM plex_library"
+            ).fetchall()
+            plex_tmdb = {
+                (row["media_type"], str(row["tmdb_id"]))
+                for row in plex_rows if row["tmdb_id"] is not None
+            }
+            plex_imdb = {
+                str(row["imdb_id"]) for row in plex_rows if row["imdb_id"]
+            }
+            plex_titles: dict[tuple[str, str], set[object]] = {}
+            for row in plex_rows:
+                plex_titles.setdefault(
+                    (row["media_type"], str(row["title"]).casefold()), set()
+                ).add(row["year"])
+
+            for item, media_type, tmdb_id, imdb_id, media_key in candidates:
+                if media_key in request_keys:
+                    skipped_requested += 1
+                    continue
+                years = plex_titles.get(
+                    (media_type, str(item.get("title") or item.get("name") or "").casefold()),
+                    set(),
+                )
+                year = item.get("year")
+                in_plex = (
+                    (tmdb_id is not None and (media_type, str(tmdb_id)) in plex_tmdb)
+                    or (bool(imdb_id) and imdb_id in plex_imdb)
+                    or bool(years and (year is None or year in years or None in years))
+                )
+                if in_plex:
+                    skipped_existing += 1
+                    continue
+                cursor = db.execute(
+                    """INSERT INTO requests
+                       (media_key, media_type, title, year, tmdb_id, imdb_id,
+                        plex_guid, poster_path, overview, source, source_ref,
+                        profile, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        media_key, media_type,
+                        item.get("title") or item.get("name") or "Unknown",
+                        year, tmdb_id, imdb_id,
+                        item.get("poster_path") or "", item.get("overview") or "",
+                        source, source_ref, profile, now, now,
+                    ),
+                )
+                db.execute(
+                    """INSERT INTO request_events(request_id, state, detail, created_at)
+                       VALUES (?, 'queued', ?, ?)""",
+                    (cursor.lastrowid, f"Added from {source}", now),
+                )
+                request_keys.add(media_key)
+                added += 1
+        return {
+            "added": added,
+            "skipped_existing": skipped_existing,
+            "skipped_requested": skipped_requested,
+        }
+
+    def list_handoff_candidates(self) -> list[dict]:
+        with self.connection() as db:
+            rows = db.execute(
+                """SELECT * FROM requests
+                   WHERE status IN ('library_pending', 'needs_attention')
+                   ORDER BY id"""
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def recover_startup_states(self) -> dict:
+        """Make request states truthful after an interrupted Orbit process."""
+        now = utc_now()
+        with self._lock, self.connection() as db:
+            interrupted = db.execute(
+                "SELECT id FROM requests WHERE status='searching'"
+            ).fetchall()
+            caught_up = db.execute(
+                """SELECT id FROM requests
+                   WHERE status='library_pending'
+                     AND status_detail LIKE 'Series is caught up%'"""
+            ).fetchall()
+            for row in interrupted:
+                detail = "Search was interrupted by an Orbit restart; library recovery will recheck it"
+                db.execute(
+                    "UPDATE requests SET status='needs_attention', status_detail=?, updated_at=? WHERE id=?",
+                    (detail, now, row["id"]),
+                )
+                db.execute(
+                    """INSERT INTO request_events(request_id, state, detail, created_at)
+                       VALUES (?, 'needs_attention', ?, ?)""",
+                    (row["id"], detail, now),
+                )
+            for row in caught_up:
+                detail = "Series is caught up; future unaired episodes were ignored"
+                db.execute(
+                    "UPDATE requests SET status='ready', status_detail=?, updated_at=? WHERE id=?",
+                    (detail, now, row["id"]),
+                )
+                db.execute(
+                    """INSERT INTO request_events(request_id, state, detail, created_at)
+                       VALUES (?, 'ready', ?, ?)""",
+                    (row["id"], detail, now),
+                )
+        return {"interrupted": len(interrupted), "caught_up": len(caught_up)}
 
     def series_completion_count(self, run_key: str) -> int:
         with self.connection() as db:
@@ -700,7 +844,8 @@ class Store:
         now = utc_now()
         kind = str(data.get("kind", "mdblist")).strip().lower()
         url = str(data["url"]).strip().rstrip("/")
-        max_items = max(1, min(int(data.get("max_items", 100)), 1000))
+        max_supported = 70000 if kind == "mdblist" else 1000
+        max_items = max(1, min(int(data.get("max_items", 100)), max_supported))
         with self._lock, self.connection() as db:
             existing = db.execute(
                 """SELECT * FROM list_sources

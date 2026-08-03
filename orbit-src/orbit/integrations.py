@@ -15,14 +15,25 @@ class IntegrationError(RuntimeError):
     pass
 
 
-def _json_request(url: str, headers: dict | None = None, timeout: int = 20):
+def _json_request(
+    url: str,
+    headers: dict | None = None,
+    timeout: int = 20,
+    return_headers: bool = False,
+):
     request = urllib.request.Request(
         url,
         headers={"Accept": "application/json", "User-Agent": "Orbit/0.1", **(headers or {})},
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
-            return json.loads(response.read().decode("utf-8"))
+            payload = json.loads(response.read().decode("utf-8"))
+            if return_headers:
+                return payload, {
+                    str(key).lower(): str(value)
+                    for key, value in response.headers.items()
+                }
+            return payload
     except urllib.error.HTTPError as error:
         try:
             detail = json.loads(error.read().decode("utf-8")).get("error")
@@ -106,30 +117,69 @@ def _normalise_item(item: dict) -> dict | None:
 def fetch_mdblist(list_url: str, api_key: str, limit: int = 100) -> list[dict]:
     if not api_key:
         raise IntegrationError("Add an MDBList API key in Settings")
-    item_limit = max(1, min(limit, 1000))
+    item_limit = max(1, min(limit, 70000))
     parsed = urllib.parse.urlparse(_mdblist_api_url(list_url))
-    query = urllib.parse.parse_qs(parsed.query)
-    query.update({"apikey": [api_key], "limit": [str(item_limit)]})
-    endpoint = urllib.parse.urlunparse(parsed._replace(
-        query=urllib.parse.urlencode(query, doseq=True)
-    ))
-    payload = _json_request(endpoint)
-    if isinstance(payload, dict):
-        raw_items = payload.get("items")
-        if not isinstance(raw_items, list):
-            raw_items = [
-                *(payload.get("movies") or []),
-                *(payload.get("shows") or []),
-            ]
-    else:
-        raw_items = payload
-    if not isinstance(raw_items, list):
-        raise IntegrationError("MDBList returned an unsupported list response")
     items = []
-    for raw in raw_items[:item_limit]:
-        normalised = _normalise_item(raw)
-        if normalised:
+    seen_items = set()
+    seen_cursors = set()
+    cursor = ""
+    while len(items) < item_limit:
+        page_size = min(1000, item_limit - len(items))
+        query = urllib.parse.parse_qs(parsed.query)
+        query.update({"apikey": [api_key], "limit": [str(page_size)]})
+        if cursor:
+            query["cursor"] = [cursor]
+        endpoint = urllib.parse.urlunparse(parsed._replace(
+            query=urllib.parse.urlencode(query, doseq=True)
+        ))
+        response = _json_request(endpoint, return_headers=True)
+        if isinstance(response, tuple):
+            payload, response_headers = response
+        else:
+            # Test doubles and older adapters may return only the payload.
+            payload, response_headers = response, {}
+        if isinstance(payload, dict):
+            raw_items = payload.get("items")
+            if not isinstance(raw_items, list):
+                raw_items = [
+                    *(payload.get("movies") or []),
+                    *(payload.get("shows") or []),
+                ]
+            pagination = payload.get("pagination") or {}
+        else:
+            raw_items = payload
+            pagination = {}
+        if not isinstance(raw_items, list):
+            raise IntegrationError("MDBList returned an unsupported list response")
+        for raw in raw_items:
+            normalised = _normalise_item(raw)
+            if not normalised:
+                continue
+            identity = (
+                normalised["media_type"],
+                normalised.get("tmdb_id") or normalised.get("imdb_id"),
+            )
+            if identity in seen_items:
+                continue
+            seen_items.add(identity)
             items.append(normalised)
+            if len(items) >= item_limit:
+                break
+        next_cursor = str(
+            pagination.get("next_cursor")
+            or response_headers.get("x-next-cursor")
+            or ""
+        )
+        has_more = pagination.get("has_more")
+        if (
+            not raw_items
+            or has_more is False
+            or not next_cursor
+            or next_cursor in seen_cursors
+        ):
+            break
+        seen_cursors.add(next_cursor)
+        cursor = next_cursor
     return items
 
 

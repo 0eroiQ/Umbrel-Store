@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from orbit.store import Store
@@ -84,6 +85,156 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(second["profile"], "1080p")
         self.assertEqual(second["max_items"], 1000)
         self.assertEqual(len(self.store.list_sources()), 1)
+
+    def test_mdblist_source_accepts_large_lists_but_trakt_stays_bounded(self):
+        mdblist = self.store.add_list_source({
+            "name": "BoxSets", "kind": "mdblist",
+            "url": "https://mdblist.com/lists/example/boxsets",
+            "max_items": 25000,
+        })
+        trakt = self.store.add_list_source({
+            "name": "Trakt", "kind": "trakt",
+            "url": "https://trakt.tv/users/example/lists/boxsets",
+            "max_items": 25000,
+        })
+        self.assertEqual(mdblist["max_items"], 25000)
+        self.assertEqual(trakt["max_items"], 1000)
+
+    def test_large_list_import_is_batched_and_deduplicated(self):
+        self.store.replace_plex_library([{
+            "plex_rating_key": "1", "section_id": "4", "media_type": "movie",
+            "title": "Movie 1", "year": 2020, "tmdb_id": 1,
+            "quality": "1080p", "versions": [],
+        }])
+        self.store.add_request({
+            "media_type": "movie", "title": "Movie 2", "year": 2020,
+            "tmdb_id": 2,
+        })
+        items = [
+            {
+                "media_type": "movie", "title": f"Movie {item_id}",
+                "year": 2020, "tmdb_id": item_id,
+            }
+            for item_id in range(1, 10006)
+        ]
+
+        result = self.store.import_list_items(
+            items, "mdblist", "1", "best"
+        )
+
+        self.assertEqual(result, {
+            "added": 10003,
+            "skipped_existing": 1,
+            "skipped_requested": 1,
+        })
+        self.assertEqual(len(self.store.list_requests(limit=500)), 500)
+        with self.store.connection() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM requests").fetchone()[0], 10004)
+
+    def test_startup_recovers_interrupted_and_caught_up_states(self):
+        interrupted, _ = self.store.add_request({
+            "media_type": "movie", "title": "Roommates", "tmdb_id": 1511057,
+        })
+        caught_up, _ = self.store.add_request({
+            "media_type": "show", "title": "Silo", "tmdb_id": 125988,
+        })
+        waiting, _ = self.store.add_request({
+            "media_type": "movie", "title": "Waiting", "tmdb_id": 999999,
+        })
+        self.store.transition(interrupted["id"], "searching", "Searching")
+        self.store.transition(
+            caught_up["id"], "library_pending",
+            "Series is caught up; future unaired episodes were ignored",
+        )
+        self.store.transition(waiting["id"], "library_pending", "Waiting for mount")
+
+        result = self.store.recover_startup_states()
+        current = {item["title"]: item for item in self.store.list_requests()}
+
+        self.assertEqual(result, {"interrupted": 1, "caught_up": 1})
+        self.assertEqual(current["Roommates"]["status"], "needs_attention")
+        self.assertEqual(current["Silo"]["status"], "ready")
+        self.assertEqual(current["Waiting"]["status"], "library_pending")
+
+    def test_caught_up_acquisition_finishes_ready_without_waiting_for_mount(self):
+        request, _ = self.store.add_request({
+            "media_type": "show", "title": "Silo", "tmdb_id": 125988,
+        })
+        coordinator = Coordinator(self.store, self.temp.name)
+        completed = SimpleNamespace(
+            returncode=0,
+            stdout='{"ok":true,"status":"ready","detail":"Series is caught up"}\n',
+            stderr="",
+        )
+        with patch.dict(os.environ, {"ORBIT_ACQUIRE_COMMAND": "acquire"}), \
+                patch("orbit.worker.subprocess.run", return_value=completed):
+            coordinator.process_one()
+        current = self.store.list_requests()[0]
+        self.assertEqual(current["id"], request["id"])
+        self.assertEqual(current["status"], "ready")
+
+    def test_empty_library_handoff_expires_but_can_recover_later(self):
+        movies = os.path.join(self.temp.name, "Movies")
+        television = os.path.join(self.temp.name, "TV")
+        os.makedirs(os.path.join(movies, "Waiting (2026) {tmdb-999999}"))
+        os.makedirs(television)
+        request, _ = self.store.add_request({
+            "media_type": "movie", "title": "Waiting", "tmdb_id": 999999,
+        })
+        self.store.transition(request["id"], "library_pending", "Waiting for mount")
+        with self.store.connection() as db:
+            db.execute(
+                "UPDATE requests SET updated_at='2020-01-01T00:00:00+00:00' WHERE id=?",
+                (request["id"],),
+            )
+        coordinator = Coordinator(self.store, self.temp.name)
+        with patch.dict(os.environ, {
+            "ORBIT_MOVIES_DIR": movies,
+            "ORBIT_TV_DIR": television,
+            "ORBIT_LIBRARY_PENDING_TIMEOUT_SECONDS": "300",
+        }), patch.object(coordinator, "mount_is_healthy", return_value=True):
+            coordinator.verify_library_handoffs()
+        current = self.store.list_requests()[0]
+        self.assertEqual(current["status"], "needs_attention")
+        self.assertIn("handoff timeout", current["status_detail"])
+
+    def test_handoff_recovery_is_not_limited_to_latest_five_hundred_requests(self):
+        movies = os.path.join(self.temp.name, "Movies")
+        television = os.path.join(self.temp.name, "TV")
+        target_folder = os.path.join(movies, "Roommates (2026) {tmdb-1511057}")
+        os.makedirs(target_folder)
+        os.makedirs(television)
+        with open(os.path.join(target_folder, "Roommates.mkv"), "wb") as handle:
+            handle.write(b"video")
+        target, _ = self.store.add_request({
+            "media_type": "movie", "title": "Roommates", "tmdb_id": 1511057,
+        })
+        self.store.transition(target["id"], "library_pending", "Waiting for mount")
+        bulk = [
+            {
+                "media_type": "movie", "title": f"Queued {item_id}",
+                "tmdb_id": 2000000 + item_id,
+            }
+            for item_id in range(600)
+        ]
+        self.store.import_list_items(bulk, "mdblist", "1", "best")
+        with self.store.connection() as db:
+            db.execute(
+                "UPDATE requests SET status='needs_attention' WHERE id != ?",
+                (target["id"],),
+            )
+        coordinator = Coordinator(self.store, self.temp.name)
+        with patch.dict(os.environ, {
+            "ORBIT_MOVIES_DIR": movies,
+            "ORBIT_TV_DIR": television,
+        }), patch.object(coordinator, "mount_is_healthy", return_value=True), \
+                patch.object(coordinator, "refresh_plex_paths_if_healthy", return_value=[]):
+            coordinator.verify_library_handoffs()
+        with self.store.connection() as db:
+            status = db.execute(
+                "SELECT status FROM requests WHERE id=?", (target["id"],)
+            ).fetchone()[0]
+        self.assertEqual(status, "ready")
 
     def test_library_link_promotes_request_to_ready(self):
         movies = os.path.join(self.temp.name, "Movies")
