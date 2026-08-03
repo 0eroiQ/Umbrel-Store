@@ -119,6 +119,36 @@ def acquisition_was_handed_off(item) -> bool:
     return visit(item)
 
 
+def provider_download_wait(item) -> dict | None:
+    """Return a provider wait hint raised by a nested movie or episode."""
+    seen = set()
+
+    def visit(node):
+        if node is None or id(node) in seen:
+            return None
+        seen.add(id(node))
+        seconds = getattr(node, "orbit_provider_wait_seconds", 0)
+        if seconds:
+            return {
+                "ok": False,
+                "retryable": True,
+                "retry_after_seconds": int(seconds),
+                "detail": str(getattr(
+                    node,
+                    "orbit_provider_wait_detail",
+                    "Debrid is downloading the selected release; Orbit will retry automatically",
+                )),
+            }
+        for attribute in ("Seasons", "Episodes"):
+            for child in (getattr(node, attribute, None) or []):
+                result = visit(child)
+                if result:
+                    return result
+        return None
+
+    return visit(item)
+
+
 def install_alldebrid_compatibility(service) -> None:
     """Adapt plex_debrid to AllDebrid's current magnet API.
 
@@ -130,6 +160,20 @@ def install_alldebrid_compatibility(service) -> None:
     cache-check phase.
     """
     short = getattr(service, "short", "AD")
+
+    def logerror(response):
+        try:
+            payload = json.loads(response.content)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            payload = {}
+        if response.status_code == 200 and payload.get("status") != "error":
+            return
+        error = payload.get("error") or {}
+        if not isinstance(error, dict):
+            error = {}
+        message = error.get("message") or "request failed"
+        code = error.get("code") or response.status_code
+        service.ui_print(f"[alldebrid] error {response.status_code}: {code} {message}")
 
     def check(element, force=False):
         del force
@@ -162,11 +206,18 @@ def install_alldebrid_compatibility(service) -> None:
             return False
         if getattr(uploaded, "error", None) or not getattr(uploaded, "id", None):
             return False
+        if not bool(getattr(uploaded, "ready", False)):
+            element.orbit_provider_wait_seconds = 300
+            element.orbit_provider_wait_detail = (
+                "AllDebrid is downloading the selected release; Orbit paused "
+                "the recommendation queue and will retry automatically"
+            )
         service.ui_print(
             "[alldebrid] added release: " + str(getattr(releases[0], "title", "unknown"))
         )
         return True
 
+    service.logerror = logerror
     service.check = check
     service.download = download
 
@@ -353,6 +404,10 @@ def main() -> int:
     except OSError:
         provider_log_offset = 0
     item.download(library=[] if scope is not None else library)
+    wait_failure = provider_download_wait(item)
+    if wait_failure:
+        print(json.dumps(wait_failure))
+        return 7
     releases = getattr(item, "downloaded_releases", [])
     if not releases:
         if acquisition_was_handed_off(item):

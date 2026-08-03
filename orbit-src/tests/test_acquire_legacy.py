@@ -11,6 +11,7 @@ from orbit.acquire_legacy import (
     install_alldebrid_compatibility,
     load_engine_settings,
     prepare_item_metadata,
+    provider_download_wait,
     provider_quota_failure,
     replacement_scope,
     restrict_replacement_item,
@@ -74,6 +75,29 @@ class AcquireLegacyTests(unittest.TestCase):
             "https://api.alldebrid.com/v4/magnet/upload",
             {"magnets[]": selected.download[0]},
         ))
+
+    def test_uncached_alldebrid_upload_pauses_queue_until_download_is_ready(self):
+        service = SimpleNamespace(
+            short="AD",
+            post=lambda _url, _data: SimpleNamespace(
+                data=SimpleNamespace(magnets=[SimpleNamespace(id=42, ready=False)])
+            ),
+            ui_print=lambda _message: None,
+        )
+        install_alldebrid_compatibility(service)
+        release = SimpleNamespace(
+            hash="a" * 40, cached=[], download=["magnet:?xt=urn:btih:" + "a" * 40],
+            title="Downloading Movie",
+        )
+        episode = SimpleNamespace(Releases=[release])
+        show = SimpleNamespace(Seasons=[SimpleNamespace(Episodes=[episode])])
+
+        self.assertTrue(service.download(episode))
+        result = provider_download_wait(show)
+
+        self.assertTrue(result["retryable"])
+        self.assertEqual(result["retry_after_seconds"], 300)
+        self.assertIn("paused the recommendation queue", result["detail"])
 
     def test_alldebrid_obsolete_endpoint_pauses_instead_of_burning_queue(self):
         with tempfile.TemporaryDirectory() as directory:
