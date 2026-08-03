@@ -119,6 +119,37 @@ def acquisition_was_handed_off(item) -> bool:
     return visit(item)
 
 
+def provider_quota_failure(log_path: str, start_offset: int = 0) -> dict | None:
+    """Return a safe, retryable provider error written during this acquisition.
+
+    The bundled legacy engine logs provider API failures instead of returning
+    them from ``item.download``. Read only the bytes appended for the current
+    request so an old account error cannot poison later acquisitions.
+    """
+    try:
+        size = os.path.getsize(log_path)
+        offset = start_offset if 0 <= start_offset <= size else 0
+        with open(log_path, "rb") as handle:
+            handle.seek(offset)
+            text = handle.read().decode("utf-8", errors="replace")
+    except OSError:
+        return None
+
+    lowered = text.lower()
+    if "account_limit_reached" in lowered or "your space is full" in lowered:
+        provider = "Premiumize" if "[premiumize]" in lowered else "Debrid provider"
+        return {
+            "ok": False,
+            "retryable": True,
+            "retry_after_seconds": 1800,
+            "detail": (
+                f"{provider} storage is full; free space or upgrade the account "
+                "before Orbit can add media"
+            ),
+        }
+    return None
+
+
 def prepare_item_metadata(item, job: dict, library, matching_service: str, plex):
     """Resolve metadata without requiring an existing item in every Plex section.
 
@@ -230,6 +261,11 @@ def main() -> int:
         }))
         return 0
 
+    provider_log = os.path.join(config_dir, "plex_debrid.log")
+    try:
+        provider_log_offset = os.path.getsize(provider_log)
+    except OSError:
+        provider_log_offset = 0
     item.download(library=[] if scope is not None else library)
     releases = getattr(item, "downloaded_releases", [])
     if not releases:
@@ -240,6 +276,10 @@ def main() -> int:
                 "paths": [],
             }))
             return 0
+        quota_failure = provider_quota_failure(provider_log, provider_log_offset)
+        if quota_failure:
+            print(json.dumps(quota_failure))
+            return 7
         print(json.dumps({"ok": False, "detail": "No suitable cached release was acquired"}))
         return 6
     print(json.dumps({"ok": True, "detail": "Acquired and handed to the library", "paths": releases}))

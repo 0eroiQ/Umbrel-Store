@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-orbit
 category: media
 name: Orbit
-version: "0.6.16"
+version: "0.6.17"
 tagline: Search, automate, mount, and deliver debrid media to Plex
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-orbit/icon.png
 description: >-
@@ -41,10 +41,9 @@ defaultPassword: ""
 torOnly: false
 permissions: []
 releaseNotes: >-
-  Imports large MDBList collections with cursor pagination and efficient batch
-  inserts, supporting lists up to 70,000 titles. Interrupted searches recover
-  safely after restarts, caught-up series finish as ready, and delayed mount
-  handoffs leave the pending state after a bounded wait while remaining
-  eligible for automatic recovery.
+  Shows Premiumize storage-limit failures instead of misreporting them as
+  missing cached releases. When a debrid account is full, Orbit now pauses the
+  acquisition queue and retries automatically rather than exhausting thousands
+  of automatic-list recommendations while no media can be added.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store

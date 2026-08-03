@@ -1,4 +1,6 @@
 import builtins
+import os
+import tempfile
 import unittest
 from types import SimpleNamespace
 
@@ -8,6 +10,7 @@ from orbit.acquire_legacy import (
     library_has_media_type,
     load_engine_settings,
     prepare_item_metadata,
+    provider_quota_failure,
     replacement_scope,
     restrict_replacement_item,
 )
@@ -44,6 +47,25 @@ class FakePlex:
 
 
 class AcquireLegacyTests(unittest.TestCase):
+    def test_provider_quota_failure_reads_only_current_acquisition_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "plex_debrid.log")
+            with open(path, "wb") as handle:
+                handle.write(b"[premiumize] error: Your space is full!\n")
+            offset = os.path.getsize(path)
+            self.assertIsNone(provider_quota_failure(path, offset))
+
+            with open(path, "ab") as handle:
+                handle.write(
+                    b'[premiumize] error: {"code":"account_limit_reached"}\n'
+                    b"[premiumize] error: Your space is full! Please delete old files first!\n"
+                )
+            result = provider_quota_failure(path, offset)
+
+        self.assertTrue(result["retryable"])
+        self.assertEqual(result["retry_after_seconds"], 1800)
+        self.assertIn("Premiumize storage is full", result["detail"])
+
     def test_debrid_handoff_remains_successful_while_mount_is_delayed(self):
         movie = SimpleNamespace(
             existing_releases=["Cabin.Fever.2002.1080p"],

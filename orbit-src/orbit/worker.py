@@ -39,6 +39,8 @@ class Coordinator:
         self.last_mount_reconcile_poll = 0.0
         self.last_handoff_verify_poll = 0.0
         self.last_pending_scan_poll = 0.0
+        self.acquisition_blocked_until = 0.0
+        self.acquisition_block_detail = ""
         self.link_repair_lock = threading.Lock()
         self.last_link_repair = {
             "status": "never",
@@ -138,6 +140,8 @@ class Coordinator:
             self.last_pending_scan_poll = time.monotonic()
 
     def process_one(self):
+        if time.monotonic() < self.acquisition_blocked_until:
+            return
         job = self.store.next_queued()
         command = os.environ.get("ORBIT_ACQUIRE_COMMAND", "").strip()
         if not job or not command:
@@ -163,6 +167,19 @@ class Coordinator:
                 if state not in {"ready", "library_pending"}:
                     state = "library_pending"
                 self.store.transition(job["id"], state, result.get("detail", "Added to debrid"))
+            elif result.get("retryable"):
+                try:
+                    retry_after = int(result.get("retry_after_seconds", 1800))
+                except (TypeError, ValueError):
+                    retry_after = 1800
+                retry_after = max(60, min(retry_after, 86400))
+                detail = result.get("detail", "Debrid provider is temporarily unavailable")
+                self.acquisition_blocked_until = time.monotonic() + retry_after
+                self.acquisition_block_detail = detail
+                self.store.transition(
+                    job["id"], "queued",
+                    f"{detail}. Orbit paused acquisition and will retry automatically",
+                )
             else:
                 self.store.transition(job["id"], "needs_attention", result.get("detail", "Acquisition failed"))
         except subprocess.TimeoutExpired:
