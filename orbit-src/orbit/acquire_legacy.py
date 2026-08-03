@@ -119,6 +119,58 @@ def acquisition_was_handed_off(item) -> bool:
     return visit(item)
 
 
+def install_alldebrid_compatibility(service) -> None:
+    """Adapt plex_debrid to AllDebrid's current magnet API.
+
+    AllDebrid removed the old ``/v4/magnet/instant`` endpoint used by the
+    bundled legacy engine.  The supported upload endpoint now reports whether
+    the submitted magnet is already ready.  Mark valid releases as eligible so
+    the normal quality sorter can choose one, then upload only that chosen
+    magnet.  This avoids bulk-uploading every scraped candidate during the old
+    cache-check phase.
+    """
+    short = getattr(service, "short", "AD")
+
+    def check(element, force=False):
+        del force
+        for release in list(getattr(element, "Releases", []) or []):
+            if len(str(getattr(release, "hash", ""))) != 40:
+                element.Releases.remove(release)
+                continue
+            cached = getattr(release, "cached", None)
+            if cached is None:
+                release.cached = []
+                cached = release.cached
+            if short not in cached:
+                cached.append(short)
+
+    def download(element, stream=True, query="", force=False):
+        del stream, query, force
+        releases = list(getattr(element, "Releases", []) or [])
+        if not releases:
+            return False
+        magnet = (getattr(releases[0], "download", None) or [""])[0]
+        if not magnet:
+            return False
+        response = service.post(
+            "https://api.alldebrid.com/v4/magnet/upload",
+            {"magnets[]": magnet},
+        )
+        try:
+            uploaded = response.data.magnets[0]
+        except (AttributeError, IndexError, TypeError):
+            return False
+        if getattr(uploaded, "error", None) or not getattr(uploaded, "id", None):
+            return False
+        service.ui_print(
+            "[alldebrid] added release: " + str(getattr(releases[0], "title", "unknown"))
+        )
+        return True
+
+    service.check = check
+    service.download = download
+
+
 def provider_quota_failure(log_path: str, start_offset: int = 0) -> dict | None:
     """Return a safe, retryable provider error written during this acquisition.
 
@@ -147,6 +199,38 @@ def provider_quota_failure(log_path: str, start_offset: int = 0) -> dict | None:
                 "before Orbit can add media"
             ),
         }
+    if "[alldebrid]" in lowered:
+        if "endpoint doesn't exist" in lowered or "error 404" in lowered:
+            return {
+                "ok": False,
+                "retryable": True,
+                "retry_after_seconds": 1800,
+                "detail": (
+                    "AllDebrid rejected an obsolete API endpoint; update Orbit "
+                    "before retrying media"
+                ),
+            }
+        if "error 401" in lowered:
+            return {
+                "ok": False,
+                "retryable": True,
+                "retry_after_seconds": 1800,
+                "detail": "AllDebrid rejected the API key; reconnect AllDebrid in Settings",
+            }
+        if "magnet_must_be_premium" in lowered or "magnet_no_server" in lowered:
+            return {
+                "ok": False,
+                "retryable": True,
+                "retry_after_seconds": 1800,
+                "detail": "AllDebrid cannot accept magnets for this account or network",
+            }
+        if "magnet_too_many_active" in lowered:
+            return {
+                "ok": False,
+                "retryable": True,
+                "retry_after_seconds": 600,
+                "detail": "AllDebrid has too many active magnets; Orbit will retry automatically",
+            }
     return None
 
 
@@ -205,6 +289,8 @@ def main() -> int:
     ui.service_mode = True
     set_log_dir(config_dir)
     load_engine_settings(ui)
+    from debrid.services import alldebrid  # type: ignore
+    install_alldebrid_compatibility(alldebrid)
     apply_quality_profile(releases, job.get("profile") or "best")
 
     media = SimpleNamespace(
