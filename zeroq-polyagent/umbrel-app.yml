@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-polyagent
 category: finance
 name: CryptoAgent
-version: '3.3.9'
+version: '3.4.0'
 tagline: Self-hosted Binance paper and Testnet trading with strict live isolation
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
 description: >-
@@ -32,16 +32,15 @@ defaultPassword: ''
 torOnly: false
 permissions: []
 releaseNotes: >-
-  v3.3.9 rounds limit prices to the symbol tick in the direction that keeps them marketable: up
-  for buys, down for sells. Prices were previously always rounded down, which moved a buy away
-  from the best ask and could erase a price cushion narrower than one tick, causing the order to
-  expire unfilled. This follows v3.3.8, which fixed the underlying order-book defect behind almost
-  every Testnet buy expiring: the Binance depth stream sends only changed levels, and updates were
-  applied without checking their sequence numbers against the snapshot, so a stale level could sit
-  below the real best ask indefinitely. Depth updates are now sequence-checked and re-synced
-  whenever a gap appears, and trading mode is validated wherever it is resolved, so live mode is
-  refused from every source. Paper and Spot Testnet remain available; real-money execution is
-  still not included, and no profitability claim forms part of this release. Existing settings and
+  v3.4.0 stops the agent trading on a bad order book and raises Spot Testnet trade sizes. If the
+  local book is ever crossed — a stale price sitting on the wrong side of the market — strategies
+  now decline to trade instead of pricing orders against a level that no longer exists. Each
+  symbol's book is also rebuilt from the exchange every 30 seconds, so no stale price can persist,
+  and failures fetching it are recorded rather than ignored. Testnet trade sizing now matches the
+  10,000 USDT of exchange test funds the Testnet account is issued: 500 USDT per order, up to five
+  concurrent positions, and a 250 USDT daily loss limit, replacing the previous single-position
+  10 USDT canary. Limits are still enforced, only raised. Real-money execution remains impossible
+  in this package, and no profitability claim forms part of this release. Existing settings and
   Testnet positions persist through the update.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store
