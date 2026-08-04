@@ -19,6 +19,11 @@ dist/
 build/
 out/
 
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
 # Dependency directories
 node_modules/
 vendor/

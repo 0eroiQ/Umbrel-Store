@@ -447,8 +447,13 @@ class Mount:
 
     def _rclone_args(self):
         cfg = read_config()
+        # Orbit adds torrents to AllDebrid, whose playable torrent files live
+        # below the WebDAV `magnets` directory. Mount that directory as the
+        # source root so the symlinker's torrent-name paths resolve.
+        mode = cfg.get("DEBRID_MODE", "webdav").lower()
+        remote = "debrid:magnets" if mode == "alldebrid" else "debrid:"
         return [
-            "rclone", "mount", "debrid:", MOUNTPOINT,
+            "rclone", "mount", remote, MOUNTPOINT,
             "--config", RCLONE_CONFIG,
             "--allow-other",
             "--read-only",
