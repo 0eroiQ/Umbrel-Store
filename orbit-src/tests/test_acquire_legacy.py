@@ -1,7 +1,9 @@
 import builtins
+import json
 import os
 import tempfile
 import unittest
+import unittest.mock
 from types import SimpleNamespace
 
 from orbit.acquire_legacy import (
@@ -9,6 +11,7 @@ from orbit.acquire_legacy import (
     apply_quality_profile,
     library_has_media_type,
     install_alldebrid_compatibility,
+    install_torbox_compatibility,
     load_engine_settings,
     prepare_item_metadata,
     provider_download_wait,
@@ -236,6 +239,144 @@ class AcquireLegacyTests(unittest.TestCase):
         )
         self.assertIs(result, native)
         self.assertEqual(native.matches, ["content.services.plex"])
+
+
+class FakeResponse:
+    def __init__(self, status_code, payload=None):
+        self.status_code = status_code
+        self.content = json.dumps(payload if payload is not None else {}).encode()
+
+
+class FakeSession:
+    def __init__(self, get_responses=None, post_responses=None):
+        self.get_responses = list(get_responses or [])
+        self.post_responses = list(post_responses or [])
+        self.get_calls = []
+        self.post_calls = []
+
+    def get(self, url, headers=None, timeout=None):
+        self.get_calls.append((url, timeout))
+        result = self.get_responses.pop(0) if self.get_responses else FakeResponse(200)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    def post(self, url, headers=None, data=None, timeout=None):
+        self.post_calls.append((url, data, timeout))
+        result = self.post_responses.pop(0) if self.post_responses else FakeResponse(200)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+
+def fake_torbox(session, download=None):
+    service = SimpleNamespace(
+        API_BASE="https://api.torbox.app/v1/api",
+        session=session,
+        messages=[],
+        _auth_header=lambda: "Bearer key",
+        logerror=lambda response: None,
+        download=download or (lambda element, *args, **kwargs: False),
+    )
+    service.ui_print = service.messages.append
+    return service
+
+
+class TorboxCompatibilityTests(unittest.TestCase):
+    def setUp(self):
+        patcher = unittest.mock.patch("orbit.acquire_legacy.time.sleep")
+        self.sleep = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_requests_are_bounded_and_retry_degraded_statuses(self):
+        session = FakeSession([
+            FakeResponse(504),
+            FakeResponse(200, {"data": {"id": 7}}),
+        ])
+        service = fake_torbox(session)
+        install_torbox_compatibility(service)
+
+        result = service.get("https://api.torbox.app/v1/api/torrents/mylist")
+
+        self.assertEqual(result.data.id, 7)
+        self.assertEqual(len(session.get_calls), 2)
+        # A hung request must never consume the whole readiness budget.
+        self.assertTrue(all(timeout == 15 for _url, timeout in session.get_calls))
+
+    def test_readiness_polls_a_single_torrent_by_id(self):
+        session = FakeSession([
+            FakeResponse(200, {"data": {"id": 42, "download_present": True}}),
+        ])
+        service = fake_torbox(session)
+        install_torbox_compatibility(service)
+
+        self.assertTrue(service._wait_until_ready(42))
+        url = session.get_calls[0][0]
+        self.assertIn("id=42", url)
+
+    def test_readiness_stops_early_on_a_failed_torrent(self):
+        session = FakeSession([
+            FakeResponse(200, {"data": {"id": 42, "download_state": "error"}}),
+        ])
+        service = fake_torbox(session)
+        install_torbox_compatibility(service)
+
+        self.assertFalse(service._wait_until_ready(42))
+        self.assertEqual(len(session.get_calls), 1)
+
+    def test_lost_create_response_recovers_the_torrent_id_by_hash(self):
+        info_hash = "a" * 40
+        session = FakeSession(
+            get_responses=[
+                FakeResponse(200, {"data": [{"id": 99, "hash": info_hash.upper()}]}),
+            ],
+            post_responses=[FakeResponse(504)],
+        )
+        service = fake_torbox(session)
+        install_torbox_compatibility(service)
+
+        response = service.post(
+            "https://api.torbox.app/v1/api/torrents/createtorrent",
+            data={"magnet": f"magnet:?xt=urn:btih:{info_hash}&dn=Example"},
+        )
+
+        # TorBox accepted the add; only the reply was lost. Never re-POST.
+        self.assertEqual(response.data.torrent_id, 99)
+        self.assertEqual(len(session.post_calls), 1)
+
+    def test_degraded_api_raises_a_retryable_wait_instead_of_failing(self):
+        session = FakeSession([FakeResponse(504)] * 3)
+        service = fake_torbox(session)
+
+        def download(element, *args, **kwargs):
+            service.get("https://api.torbox.app/v1/api/torrents/mylist")
+            return False
+
+        service.download = download
+        install_torbox_compatibility(service)
+
+        element = SimpleNamespace()
+        self.assertFalse(service.download(element))
+
+        wait = provider_download_wait(element)
+        self.assertIsNotNone(wait)
+        self.assertTrue(wait["retryable"])
+        self.assertIn("TorBox", wait["detail"])
+
+    def test_healthy_failure_is_not_reported_as_retryable(self):
+        session = FakeSession([FakeResponse(200, {"data": []})])
+        service = fake_torbox(session)
+
+        def download(element, *args, **kwargs):
+            service.get("https://api.torbox.app/v1/api/torrents/mylist")
+            return False
+
+        service.download = download
+        install_torbox_compatibility(service)
+
+        element = SimpleNamespace()
+        self.assertFalse(service.download(element))
+        self.assertIsNone(provider_download_wait(element))
 
 
 if __name__ == "__main__":

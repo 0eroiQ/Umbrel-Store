@@ -10,8 +10,17 @@ import builtins
 import datetime
 import json
 import os
+import re
 import sys
+import time
 from types import SimpleNamespace
+
+
+# TorBox returns these while its API is degraded; the request is safe to repeat.
+TORBOX_RETRY_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
+# download_state values that mean the files are available to the mount.
+TORBOX_READY_STATES = ("cached", "completed", "seeding", "uploading", "downloaded")
+TORBOX_FAILED_STATES = ("error", "failed", "missing")
 
 
 class OrbitWatchlist:
@@ -222,6 +231,186 @@ def install_alldebrid_compatibility(service) -> None:
     service.download = download
 
 
+def install_torbox_compatibility(service) -> None:
+    """Keep acquisition alive while TorBox's API is degraded.
+
+    The bundled engine issues every TorBox request without a timeout and polls
+    readiness by re-listing the caller's entire torrent library.  When TorBox's
+    list query is slow -- which it is during their recurring database
+    incidents -- a single ``mylist`` call blocks until Cloudflare gives up at
+    the 60 second mark, which is the engine's whole readiness budget.  The
+    torrent is created successfully, but the engine reports "torrent never
+    became ready" and discards a release that TorBox already accepted.
+
+    Bound every request, retry the transient statuses, and poll one torrent by
+    id rather than listing them all.  Recover the torrent id by infohash when a
+    create response is lost in flight, and raise a retryable wait hint when the
+    API stays unreachable so the worker pauses instead of burning the request.
+    """
+    api_base = getattr(service, "API_BASE", "https://api.torbox.app/v1/api")
+    state = {"degraded": False}
+
+    def headers():
+        values = {"Accept": "application/json", "User-Agent": "Orbit/torbox"}
+        try:
+            authorization = service._auth_header()
+        except Exception:
+            authorization = None
+        if authorization:
+            values["Authorization"] = authorization
+        return values
+
+    def decode(response):
+        try:
+            return json.loads(
+                response.content,
+                object_hook=lambda values: SimpleNamespace(**values),
+            )
+        except (AttributeError, TypeError, ValueError) as error:
+            service.ui_print(f"[torbox] error: (json exception): {error}")
+            return None
+
+    def get(url, attempts=3, timeout=15):
+        for attempt in range(attempts):
+            try:
+                response = service.session.get(url, headers=headers(), timeout=timeout)
+            except Exception as error:
+                state["degraded"] = True
+                service.ui_print(f"[torbox] error: (request failed) {error}")
+                time.sleep(min(2 ** attempt, 5))
+                continue
+            if getattr(response, "status_code", 0) in TORBOX_RETRY_STATUS:
+                state["degraded"] = True
+                service.ui_print(
+                    f"[torbox] error: ({response.status_code}) TorBox API is "
+                    "degraded; retrying"
+                )
+                time.sleep(min(2 ** attempt, 5))
+                continue
+            service.logerror(response)
+            return decode(response)
+        return None
+
+    def magnet_hash(data):
+        magnet = ""
+        if isinstance(data, dict):
+            magnet = str(data.get("magnet") or "")
+        match = re.search(r"btih:([0-9a-fA-F]{40})", magnet)
+        return match.group(1).lower() if match else ""
+
+    def recover_created_torrent(info_hash, attempts=3, interval=3):
+        """Find a torrent TorBox accepted but never confirmed to the caller."""
+        if not info_hash:
+            return None
+        for attempt in range(attempts):
+            response = get(f"{api_base}/torrents/mylist?bypass_cache=true")
+            for torrent in (getattr(response, "data", None) or []):
+                hashes = {
+                    str(getattr(torrent, "hash", "") or "").lower(),
+                    str(getattr(torrent, "info_hash", "") or "").lower(),
+                }
+                if info_hash in hashes and getattr(torrent, "id", None) is not None:
+                    service.ui_print(
+                        "[torbox] recovered torrent id "
+                        f"{torrent.id} for an unconfirmed add"
+                    )
+                    return SimpleNamespace(
+                        data=SimpleNamespace(torrent_id=torrent.id)
+                    )
+            if attempt + 1 < attempts:
+                time.sleep(interval)
+        return None
+
+    def post(url, data=None, timeout=45):
+        response = None
+        try:
+            response = service.session.post(
+                url, headers=headers(), data=data, timeout=timeout
+            )
+        except Exception as error:
+            state["degraded"] = True
+            service.ui_print(f"[torbox] error: (request failed) {error}")
+        if response is not None:
+            if getattr(response, "status_code", 0) not in TORBOX_RETRY_STATUS:
+                service.logerror(response)
+                return decode(response)
+            state["degraded"] = True
+            service.ui_print(
+                f"[torbox] error: ({response.status_code}) TorBox API is degraded"
+            )
+        # The add may still have landed. Repeating the POST risks a duplicate,
+        # so look the torrent up by infohash instead.
+        if url.endswith("/torrents/createtorrent"):
+            return recover_created_torrent(magnet_hash(data))
+        return None
+
+    def snapshot(torrent_id):
+        response = get(f"{api_base}/torrents/mylist?bypass_cache=true&id={torrent_id}")
+        data = getattr(response, "data", None) if response is not None else None
+        if data is None:
+            return None
+        # An id-scoped lookup returns one object; older builds return the list.
+        for torrent in (data if isinstance(data, list) else [data]):
+            if str(getattr(torrent, "id", "")) == str(torrent_id):
+                return torrent
+        return None
+
+    def _wait_until_ready(torrent_id, timeout=240, interval=3):
+        deadline = time.monotonic() + timeout
+        while True:
+            torrent = snapshot(torrent_id)
+            if torrent is not None:
+                status = str(getattr(torrent, "download_state", "") or "").lower()
+                if (
+                    getattr(torrent, "download_present", False)
+                    or getattr(torrent, "download_finished", False)
+                    or any(ready in status for ready in TORBOX_READY_STATES)
+                ):
+                    return True
+                if any(failed in status for failed in TORBOX_FAILED_STATES):
+                    return False
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(interval)
+
+    def _torrent_attribute(torrent_id, attribute, timeout, interval=3):
+        deadline = time.monotonic() + timeout
+        while True:
+            torrent = snapshot(torrent_id)
+            value = getattr(torrent, attribute, None) if torrent is not None else None
+            if value:
+                return value
+            if time.monotonic() >= deadline:
+                return None
+            time.sleep(interval)
+
+    def _get_torrent_files(torrent_id, timeout=90, interval=3):
+        return _torrent_attribute(torrent_id, "files", timeout, interval) or []
+
+    def _get_torrent_name(torrent_id, timeout=45, interval=3):
+        return _torrent_attribute(torrent_id, "name", timeout, interval)
+
+    original_download = service.download
+
+    def download(element, *args, **kwargs):
+        state["degraded"] = False
+        result = original_download(element, *args, **kwargs)
+        if not result and state["degraded"]:
+            element.orbit_provider_wait_seconds = 900
+            element.orbit_provider_wait_detail = (
+                "TorBox's API is not responding; Orbit paused acquisition and "
+                "will retry automatically"
+            )
+        return result
+
+    service.get = get
+    service.post = post
+    service._wait_until_ready = _wait_until_ready
+    service._get_torrent_files = _get_torrent_files
+    service._get_torrent_name = _get_torrent_name
+    service.download = download
+
+
 def provider_quota_failure(log_path: str, start_offset: int = 0) -> dict | None:
     """Return a safe, retryable provider error written during this acquisition.
 
@@ -340,8 +529,9 @@ def main() -> int:
     ui.service_mode = True
     set_log_dir(config_dir)
     load_engine_settings(ui)
-    from debrid.services import alldebrid  # type: ignore
+    from debrid.services import alldebrid, torbox  # type: ignore
     install_alldebrid_compatibility(alldebrid)
+    install_torbox_compatibility(torbox)
     apply_quality_profile(releases, job.get("profile") or "best")
 
     media = SimpleNamespace(
