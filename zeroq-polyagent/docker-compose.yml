@@ -8,8 +8,8 @@ services:
       PROXY_AUTH_ADD: 'true'
 
   server:
-    # Immutable multi-architecture 3.3.7 image. The normal server is Testnet-only in code.
-    image: ghcr.io/zeroq-bit/polyagent:3.3.7@sha256:97470c727a6a776a028ef6610a143300dc9fe3e89ef83265a137ad80aa32d660
+    # Immutable multi-architecture 3.3.8 image. The normal server is Testnet-only in code.
+    image: ghcr.io/zeroq-bit/polyagent:3.3.8@sha256:45a2aa63f992efc0d360588a98b68131072eb1229e4e19c08be178aa51ce065d
     restart: on-failure
     stop_grace_period: 30s
     user: '1001:1001'
@@ -19,6 +19,10 @@ services:
       POLYAGENT_SETUP_MARKER: /app/data/setup-complete
       POLYAGENT_FIXTURES_DIR: /app/fixtures/market-data
       POLYAGENT_WEB_DIST: /app/web
+      # First-run default only. Once the app has been configured, the mode stored in the encrypted
+      # database takes precedence over this value, so a running instance may report 'testnet' while
+      # this still reads 'paper' — check /ready for the effective mode. Both are validated
+      # fail-closed; 'live' is rejected from either source.
       POLYAGENT_MODE: paper
       POLYAGENT_ALLOWED_ORIGINS: '*'
       POLYAGENT_DB_KEY_FILE: /run/secrets/db_key
