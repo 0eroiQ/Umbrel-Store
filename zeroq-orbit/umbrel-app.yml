@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-orbit
 category: media
 name: Orbit
-version: "0.6.19"
+version: "0.6.20"
 tagline: Search, automate, mount, and deliver debrid media to Plex
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-orbit/icon.png
 description: >-
@@ -41,9 +41,11 @@ defaultPassword: ""
 torOnly: false
 permissions: []
 releaseNotes: >-
-  Shows Premiumize storage-limit failures instead of misreporting them as
-  missing cached releases. When a debrid account is full, Orbit now pauses the
-  acquisition queue and retries automatically rather than exhausting thousands
-  of automatic-list recommendations while no media can be added.
+  Keeps TorBox acquisition working while the TorBox API is slow or timing out.
+  Requests are now bounded and retried, readiness is checked one torrent at a
+  time instead of re-listing the whole account, and a torrent TorBox accepted
+  but never confirmed is recovered by its hash rather than being discarded as
+  "never became ready". When the API stays unreachable, Orbit pauses the queue
+  and retries automatically instead of failing the request.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store
