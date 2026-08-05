@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-polyagent
 category: finance
 name: CryptoAgent
-version: '3.4.0'
+version: '3.4.1'
 tagline: Self-hosted Binance paper and Testnet trading with strict live isolation
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
 description: >-
@@ -32,15 +32,14 @@ defaultPassword: ''
 torOnly: false
 permissions: []
 releaseNotes: >-
-  v3.4.0 stops the agent trading on a bad order book and raises Spot Testnet trade sizes. If the
-  local book is ever crossed — a stale price sitting on the wrong side of the market — strategies
-  now decline to trade instead of pricing orders against a level that no longer exists. Each
-  symbol's book is also rebuilt from the exchange every 30 seconds, so no stale price can persist,
-  and failures fetching it are recorded rather than ignored. Testnet trade sizing now matches the
-  10,000 USDT of exchange test funds the Testnet account is issued: 500 USDT per order, up to five
-  concurrent positions, and a 250 USDT daily loss limit, replacing the previous single-position
-  10 USDT canary. Limits are still enforced, only raised. Real-money execution remains impossible
-  in this package, and no profitability claim forms part of this release. Existing settings and
-  Testnet positions persist through the update.
+  v3.4.1 fixes trade sizing that stopped the agent placing any order at all. Orders are checked
+  at a limit price that crosses the spread slightly, so a trade sized at exactly the configured
+  per-order ceiling came out fractionally above it and was refused every time. Trade size now sits
+  below the ceiling. Entries refused before an order is created are also counted and reported: that
+  path previously recorded nothing, so a setting that blocked every trade was indistinguishable
+  from a quiet market. This follows v3.4.0, which stopped the agent trading on a crossed order book
+  and rebuilt each symbol's book from the exchange every 30 seconds. Paper and Spot Testnet remain
+  available; real-money execution is still not included, and no profitability claim forms part of
+  this release. Existing settings and Testnet positions persist through the update.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store
