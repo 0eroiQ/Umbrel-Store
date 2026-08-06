@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-polyagent
 category: finance
 name: CryptoAgent
-version: '3.5.0'
+version: '3.5.1'
 tagline: Self-hosted Binance paper and Testnet trading with strict live isolation
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
 description: >-
@@ -32,17 +32,13 @@ defaultPassword: ''
 torOnly: false
 permissions: []
 releaseNotes: >-
-  v3.5.0 stops the agent trading when a move cannot pay for itself. Buying and selling both cross
-  the spread, so every completed trade paid that spread whether or not the signal was right: over
-  39 measured round trips the result was 8 wins, 22 losses and a small net loss, on an average
-  captured move far below what the round trip cost. Entries now require the recent price range to
-  exceed the spread plus trading fees by a configurable multiple, and fees are assumed at the
-  normal exchange rate even though Spot Testnet charges none, so behaviour reflects a real market.
-  Exits are never blocked, so an open position can always be closed. Expect noticeably fewer
-  trades: in quiet conditions the agent may decline to trade at all, which is the intended
-  outcome. Refused entries are reported with the range and cost that caused them, so the threshold
-  can be tuned. Paper and Spot Testnet remain available; real-money execution is still not
-  included, and no profitability claim forms part of this release. Existing settings and Testnet
-  positions persist through the update.
+  v3.5.1 makes the app report anything that stops it trading. An upstream exchange outage recently
+  left it idle for seven hours while appearing perfectly healthy, with nothing written to its logs,
+  which was indistinguishable from a quiet market. It now reports an unusable order book and why,
+  a failing book refresh, entries refused before an order is created, and any period longer than
+  two minutes without a trading decision. This follows v3.5.0, which stops the app trading when a
+  price move cannot cover the spread and fees it would pay. Paper and Spot Testnet remain
+  available; real-money execution is still not included, and no profitability claim forms part of
+  this release. Existing settings and Testnet positions persist through the update.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store

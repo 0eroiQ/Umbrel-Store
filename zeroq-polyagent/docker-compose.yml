@@ -8,8 +8,8 @@ services:
       PROXY_AUTH_ADD: 'true'
 
   server:
-    # Immutable multi-architecture 3.5.0 image. The normal server is Testnet-only in code.
-    image: ghcr.io/0eroiq/polyagent:3.5.0@sha256:05b52b0658391d03ed2f09d62c80b22c2465932b32dfc4bbf3a9fd0a959f6317
+    # Immutable multi-architecture 3.5.1 image. The normal server is Testnet-only in code.
+    image: ghcr.io/0eroiq/polyagent:3.5.1@sha256:a0095348a66e2270b8e91da9ee78f5fb82591d150cbdd21de68f8e862d6615f1
     restart: on-failure
     stop_grace_period: 30s
     user: '1001:1001'
