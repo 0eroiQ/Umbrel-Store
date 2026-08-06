@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-polyagent
 category: finance
 name: CryptoAgent
-version: '3.5.1'
+version: '3.5.3'
 tagline: Self-hosted Binance paper and Testnet trading with strict live isolation
 icon: https://raw.githubusercontent.com/ZeroQ-bit/Umbrel-Store/master/zeroq-polyagent/icon.png
 description: >-
@@ -32,13 +32,13 @@ defaultPassword: ''
 torOnly: false
 permissions: []
 releaseNotes: >-
-  v3.5.1 makes the app report anything that stops it trading. An upstream exchange outage recently
-  left it idle for seven hours while appearing perfectly healthy, with nothing written to its logs,
-  which was indistinguishable from a quiet market. It now reports an unusable order book and why,
-  a failing book refresh, entries refused before an order is created, and any period longer than
-  two minutes without a trading decision. This follows v3.5.0, which stops the app trading when a
-  price move cannot cover the spread and fees it would pay. Paper and Spot Testnet remain
-  available; real-money execution is still not included, and no profitability claim forms part of
-  this release. Existing settings and Testnet positions persist through the update.
+  v3.5.3 fixes the root cause of the order-book corruption that earlier releases had only masked.
+  Binance marks a price level for removal by sending it with zero size, encoded as "0.00000000",
+  but the app compared against the exact text "0" and so never removed the level — it left it in
+  the book at its old price, where it could sit at the top and make the book look crossed. On the
+  live box this had the book unusable roughly half the time; the fix takes that to zero. Removals
+  are now recognised by numeric value, so every zero encoding clears the level. Paper and Spot
+  Testnet remain available; real-money execution is still not included, and no profitability claim
+  forms part of this release. Existing settings and Testnet positions persist through the update.
 submitter: ZeroQ
 submission: https://github.com/ZeroQ-bit/Umbrel-Store
