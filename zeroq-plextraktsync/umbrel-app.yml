@@ -2,7 +2,7 @@ manifestVersion: 1.1
 id: zeroq-plextraktsync
 category: media
 name: PlexTraktSync
-version: "0.35.17.7"
+version: "0.35.18.7"
 tagline: Sync Trakt watch progress to Plex
 icon: https://raw.githubusercontent.com/Taxel/PlexTraktSync/main/trakt.ico
 description: >-
