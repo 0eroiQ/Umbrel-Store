@@ -17,7 +17,7 @@ services:
       - ${UMBREL_ROOT}/data/storage/downloads/riven-ts:/mount:rshared
 
   server:
-    image: ghcr.io/rivenmedia/riven-ts:main@sha256:0dc7f42e9c80b28cb94a849688901cca2d26e206bbb6f8bec4b7e922093556f7
+    image: ghcr.io/rivenmedia/riven-ts:main@sha256:4dc3a8b0448fab461d3b2bda7d61dc2e9bb839471c401806110eb8fbcb2d7f2b
     restart: on-failure
     stop_grace_period: 1m
     cap_add:
